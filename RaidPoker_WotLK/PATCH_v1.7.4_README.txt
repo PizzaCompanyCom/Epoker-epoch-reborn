@@ -1,0 +1,1 @@
+v1.7.4 - Top toolbar icons: removed extra Quickslot overlay border. Card exchange: bundled CardExchange.wav and direct sound on Exchange/Stand Pat (valid draw turn only). All prior functionality retained.

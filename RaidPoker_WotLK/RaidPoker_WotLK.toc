@@ -1,0 +1,50 @@
+## Interface: 30300
+## Title: Raid Poker WotLK
+## Notes: Multi-game poker launcher; 5-Card Draw playable, The Barrens Hold'em release candidate.
+## Author: Raid Poker Development
+## Version: 1.8.0-RC1
+## SavedVariables: RaidPokerHoldemRecoveryDB, RaidPokerWotLKDB
+Core.lua
+Game.lua
+EmotesAnnouncements.lua
+Economy.lua
+Enhancements.lua
+Management.lua
+Experience.lua
+VisualTable.lua
+TablePolish.lua
+Table7.lua
+
+PlayerManagement.lua
+TableBrowser.lua
+Sounds.lua
+
+HoldemEngine.lua
+HoldemPreview.lua
+HoldemTable.lua
+HoldemGameUI.lua
+GameModeLauncher.lua
+HoldemNetwork.lua
+HoldemSoloDebug.lua
+HoldemSync.lua
+HoldemProtocol.lua
+HoldemProtocolCommandFix.lua
+HoldemMultiplayer.lua
+HoldemManagement.lua
+HoldemNetworkTable.lua
+HoldemUnified.lua
+HoldemRecords.lua
+HoldemOperations.lua
+HoldemSeatInspector.lua
+HoldemControlCenter.lua
+HoldemWindowLayers.lua
+HoldemAdminBridge.lua
+
+HoldemSessionRecovery.lua
+HoldemPreflight.lua
+
+HoldemTableDesk.lua
+
+HoldemIntegration.lua
+
+PeerVersions.lua

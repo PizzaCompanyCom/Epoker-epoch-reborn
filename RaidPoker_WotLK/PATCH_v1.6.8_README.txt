@@ -1,0 +1,14 @@
+Raid 5-Card Poker WotLK v1.6.8 — Betting Activity & Turn Timer Layout
+
+- Betting Activity is now an independent, movable window opened with a new
+  Betting Activity button in the Tables / Leave Table / Start Hand toolbar.
+- Activity window has its own close button and remembers its position.
+- Turn Timer is now a long, slim countdown bar directly below the cards.
+- Current player's name or YOUR TURN appears inside the bar.
+- Original countdown color logic is preserved (green/yellow/red for own turn,
+  gray for another player's turn).
+- Pot and turn labels shifted to avoid overlapping the new timer.
+- Existing poker gameplay, multi-table system, and English UI retained.
+
+Install by replacing Interface/AddOns/RaidPoker_WotLK, then /reload.
+All players should use the same network-compatible version.

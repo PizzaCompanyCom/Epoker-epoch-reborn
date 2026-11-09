@@ -1,0 +1,13 @@
+Raid 5-Card Poker WotLK v1.6.0 - Table Management & Game Master System
+
+INSTALL
+Extract RaidPoker_WotLK into World of Warcraft/Interface/AddOns, replacing the old addon folder. All raid participants must install v1.6.0 to support Game Master transfer and player statuses. /reload after installation.
+
+NEW
+Player Management button opens the player list. Select a player, edit Gold/Silver balance, set Sitting Out / Playing / Busted, Force Fold, Kick, or Transfer GM. Admin History opens a separate log window (last 100 local actions).
+
+RULES
+The creator of a new table is Game Master; raid leader/officer permissions are not required. GM transfer requires another seated raid member and is allowed only between hands. Balance/status/removal changes require an inactive hand; Force Fold requires an active hand. A Sitting Out or Busted player is skipped at the next deal. Gold/Silver balances are virtual silver units; no actual gold is transferred.
+
+NOTES
+Host-authoritative synchronization uses existing raid addon messages plus GMX and ADMINLOG messages. Existing Table 7.0 assets, card textures, and betting controls remain unchanged. Do not mix addon versions in the same raid. Not tested in a live TrinityCore client; test in a private raid before using real stakes.

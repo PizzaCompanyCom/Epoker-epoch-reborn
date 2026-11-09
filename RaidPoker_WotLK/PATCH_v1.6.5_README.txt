@@ -1,0 +1,11 @@
+Raid 5-Card Poker WotLK v1.6.5 — Force Synchronization UI
+
+- Removed Sync from the poker table action row.
+- Added Force Synchronization inside Settings with a 30x30 World of Warcraft icon button, matching the Settings gear size.
+- Added an English tooltip and visible label.
+- Preserved automatic sync, /poker sync, and existing gameplay.
+- Repositioned History and Leader buttons to close the gap.
+
+Installation: replace Interface/AddOns/RaidPoker_WotLK and /reload.
+Requires WoW 3.3.5a; all participants should run a compatible multi-table protocol.
+Not tested in the live WoW client.
