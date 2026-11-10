@@ -78,7 +78,16 @@ end
 function W.Refresh()
  if not frame then return end
  if frame.hf19Create then
-  local exists=N.active or (next(N.discovered or {})~=nil)
+  if N.PruneDiscovery then N.PruneDiscovery() end
+  local exists=N.active
+  if not exists then
+   for name in pairs(N.discovered or {}) do
+    if GetNumRaidMembers and GetRaidRosterInfo then
+     for i=1,GetNumRaidMembers() do if GetRaidRosterInfo(i)==name then exists=true;break end end
+    end
+    if exists then break end
+   end
+  end
   if exists then frame.hf19Create:Disable() else frame.hf19Create:Enable() end
   frame.hf19Status:SetText(N.active and ('Table: '..tostring(N.host or '-')..' [ACTIVE]') or (exists and 'Table already created in raid' or 'No active table'))
  end

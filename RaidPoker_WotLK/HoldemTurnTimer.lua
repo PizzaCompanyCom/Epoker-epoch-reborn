@@ -115,8 +115,12 @@ ticker:SetScript('OnUpdate',function(self,dt)
  if not p then return end
  local due=math.max(0,(tonumber(s.currentBet) or 0)-(tonumber(p.street or p.streetBet or p.bet) or 0))
  local action=due==0 and 'CHECK' or 'FOLD'
- local ok=H.Action(action)
- if ok and network() and R.HoldemSync and R.HoldemSync.ForceBroadcast then
-  R.HoldemSync.ForceBroadcast()
+ local ok,why=H.Action(action)
+ if ok then
+  if network() and R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
+  if R.BarrensUnifiedRefresh then R.BarrensUnifiedRefresh() end
+ else
+  -- Never retry a rejected timeout every frame; surface the fault to the host.
+  if R.Print then R.Print('Holdem turn timer: automatic '..action..' failed: '..tostring(why)) end
  end
 end)

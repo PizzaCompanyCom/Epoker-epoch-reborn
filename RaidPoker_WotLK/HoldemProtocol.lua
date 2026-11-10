@@ -54,6 +54,7 @@ local function hostAction(sender,seat,action,amount,seq)
  local accepted,why=H.Action(action,value)
  if accepted then
   M.processed[key]=true;note('ACCEPT '..clean(sender)..' '..action..' seat '..seat)
+  if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
  else note('REJECT '..clean(sender)..': '..clean(why)) end
  return accepted
 end

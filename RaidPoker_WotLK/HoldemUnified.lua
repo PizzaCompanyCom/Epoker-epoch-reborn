@@ -62,7 +62,9 @@ function R.BarrensUnifiedAction(action,amount)
  if not p or p.name~=UnitName('player') then return false,'Wait for your turn' end
  if host() then
   if not R.HoldemMultiplayer or not R.HoldemMultiplayer.active then return false,'No active network hand' end
-  return H.Action(action,amount)
+  local ok,why=H.Action(action,amount)
+  if ok and R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
+  return ok,why
  end
  local proto=R.HoldemProtocol
  if not proto or not proto.SendAction then return false,'Network protocol unavailable' end

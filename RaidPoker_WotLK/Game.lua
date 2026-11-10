@@ -570,6 +570,44 @@ function R.BuildGame(main)
  ui.cards={};ui.cardNames={}
  local cardArea=panel(main,22,-100,735,205)
  local handTitle=text(cardArea,12,-8,690,'GameFontNormal');handTitle:SetText('YOUR FIVE CARDS - CLICK TO SELECT UP TO THREE FOR EXCHANGE')
+
+ -- Hotfix 31: exchange reminder inside the five-card table (non-modal).
+ local notice=CreateFrame('Frame',nil,cardArea)
+ notice:SetPoint('TOPLEFT',cardArea,'TOPLEFT',8,-2)
+ notice:SetPoint('TOPRIGHT',cardArea,'TOPRIGHT',-8,-2)
+ notice:SetHeight(31)
+ notice:SetFrameLevel(cardArea:GetFrameLevel()+8)
+ notice:EnableMouse(false)
+ local bg=notice:CreateTexture(nil,'BACKGROUND');bg:SetAllPoints(notice)
+ bg:SetTexture('Interface\\Buttons\\WHITE8X8');bg:SetVertexColor(0.06,0.13,0.10,0.94)
+ local borders={}
+ for _,edge in ipairs({'TOP','BOTTOM','LEFT','RIGHT'}) do
+  local t=notice:CreateTexture(nil,'BORDER');t:SetTexture('Interface\\Buttons\\WHITE8X8')
+  t:SetVertexColor(1,0.78,0.26,1)
+  if edge=='TOP' then t:SetPoint('TOPLEFT');t:SetPoint('TOPRIGHT');t:SetHeight(2)
+  elseif edge=='BOTTOM' then t:SetPoint('BOTTOMLEFT');t:SetPoint('BOTTOMRIGHT');t:SetHeight(2)
+  elseif edge=='LEFT' then t:SetPoint('TOPLEFT');t:SetPoint('BOTTOMLEFT');t:SetWidth(2)
+  else t:SetPoint('TOPRIGHT');t:SetPoint('BOTTOMRIGHT');t:SetWidth(2) end
+  borders[#borders+1]=t
+ end
+ local label=notice:CreateFontString(nil,'OVERLAY','GameFontNormalLarge')
+ label:SetPoint('CENTER',notice,'CENTER',0,0)
+ label:SetFont('Fonts\\FRIZQT__.TTF',16,'OUTLINE');label:SetTextColor(1,0.82,0.34)
+ label:SetText('YOUR TURN - CARD EXCHANGE!  Select cards or STAND PAT')
+ notice:Hide();ui.exchangeNotice=notice;ui.exchangeHandTitle=handTitle
+ ui.exchangeNoticeKey=nil
+ notice:SetScript('OnUpdate',function(self,dt)
+  if not self.flashTime then return end
+  self.flashTime=self.flashTime+dt
+  if self.flashTime>=2 then
+   self.flashTime=nil
+   for _,t in ipairs(borders) do t:SetAlpha(1) end
+  else
+   local alpha=0.45+0.55*math.abs(math.sin(self.flashTime*9))
+   for _,t in ipairs(borders) do t:SetAlpha(alpha) end
+  end
+ end)
+
  for i=1,5 do
   local index=i
   local b=CreateFrame('Button',nil,cardArea);b:SetWidth(100);b:SetHeight(146);b:SetPoint('TOPLEFT',cardArea,'TOPLEFT',69+(i-1)*124,-35)
@@ -703,6 +741,22 @@ function R.Refresh()
  if not ui.status then return end
  ui.status:SetText((G.solo and '[SOLO DEBUG]  ' or '')..'Table: '..(tableName~='' and tableName or 'none')..'  |  Game Master: '..(G.host~='' and G.host or 'none')..'   |   Round: '..G.round..'   |   Phase: '..G.phase)
  ui.info:SetText('Players: '..#G.players..'/10     Ante: '..R.Money(G.ante)..'     Starting stack: '..R.Money(G.stack)..'     Turn timer: '..G.timer..'s')
+
+ -- The GM's synchronized DRAW phase and turn determine visibility.
+ local myExchange=(G.phase=='DRAW' and G.turn==me())
+ if myExchange then
+  local key=tostring(G.round)..':'..tostring(G.turn)..':'..tostring(G.phase)
+  if ui.exchangeNoticeKey~=key then
+   ui.exchangeNoticeKey=key
+   ui.exchangeNotice.flashTime=0
+   if R.PokerSound then R.PokerSound('turn') end
+  end
+  ui.exchangeNotice:Show();ui.exchangeHandTitle:Hide()
+ else
+  ui.exchangeNotice:Hide();ui.exchangeHandTitle:Show()
+  ui.exchangeNoticeKey=nil
+ end
+
  for i=1,10 do
   local p=G.players[i]
   if p then

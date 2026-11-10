@@ -9,6 +9,15 @@ local function localVersion() return R.PokerLocalVersion and R.PokerLocalVersion
 local function protocol() return tostring(R.PokerNetworkProtocol or '20') end
 local window,status,listing
 local tableButtons={}
+N.lastSeen={}
+local DISCOVERY_TTL=12
+function N.PruneDiscovery()
+ for name in pairs(N.discovered) do
+  if (N.lastSeen[name] and GetTime()-N.lastSeen[name]>DISCOVERY_TTL) then
+   N.discovered[name]=nil;N.discoveredInfo[name]=nil;N.lastSeen[name]=nil
+  end
+ end
+end
 local function me() return UnitName('player') or '' end
 local function raid()
  return GetNumRaidMembers and GetNumRaidMembers()>0
@@ -77,6 +86,7 @@ function R.BarrensNetworkLeave() leave() end
 local function create()
  if not raid() then R.Print('Barrens Network: Join a raid first.');return end
  if N.active then R.Print('Already connected to a table.');return end
+ N.PruneDiscovery()
  for name in pairs(N.discovered) do if isRaidMember(name) then R.Print('An active Holdem table exists. Use Join Table.');return end end
  leave()
  N.active=true;N.owner=true;N.host=me();N.session=safe(me())..tostring(math.floor(GetTime()*1000)%10000000)
@@ -227,6 +237,7 @@ ev:SetScript('OnEvent',function(self,event,...)
   if N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me())..'|'..localVersion()..'|'..protocol());announce(tableInfo()) end
  elseif kind=='O' and who==sender and not N.active then
   N.discovered[sender]=session
+  N.lastSeen[sender]=GetTime()
   N.discoveredInfo[sender]=N.discoveredInfo[sender] or {}
   N.discoveredInfo[sender].version=remoteVersion or 'Unknown'
   N.discoveredInfo[sender].protocol=remoteProtocol or 'legacy'
@@ -282,7 +293,15 @@ end)
 -- Wait briefly for the raid discovery response before showing the no-table dialog.
 local pendingTicker=CreateFrame('Frame')
 local pendingElapsed=0
+local heartbeatElapsed=0
 pendingTicker:SetScript('OnUpdate',function(self,dt)
+ heartbeatElapsed=heartbeatElapsed+dt
+ if heartbeatElapsed>=4 then
+  heartbeatElapsed=0
+  if N.active and N.owner then N.BroadcastTableInfo();announce('O|'..safe(N.session)..'|'..safe(me())..'|'..localVersion()..'|'..protocol()) end
+  N.PruneDiscovery()
+  if R.RefreshBarrensManagement then R.RefreshBarrensManagement() end
+ end
  pendingElapsed=pendingElapsed+dt
  if pendingElapsed<.25 then return end
  pendingElapsed=0
