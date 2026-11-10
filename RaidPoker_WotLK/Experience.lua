@@ -51,29 +51,13 @@ local rules={
  'Virtual Gold/Silver only: no automatic real-money transfer.'
 }
 local help={
- 'GETTING STARTED - GAME MASTER',
- '1. Join a raid. Open the addon and click Tables.',
- '2. Enter a table name and click Create Table.',
- '3. You automatically become Game Master of that table.',
- '4. Wait for players to join from their Table Browser.',
- '5. Set ante and starting stack in the main window; Apply.',
- '6. Use Player Management to edit balances and statuses.',
- '7. Set Turn Timer in Player Management (15/30/60s or OFF).',
- '8. Click Start Hand when everyone is ready.',
- '9. GM may Force Fold or transfer GM between hands.',
- '10. Close Table between hands to end the session.',
- 'GETTING STARTED - PLAYER',
- '1. Join the same raid and install the same addon version.',
- '2. Open Tables and click Refresh to discover tables.',
- '3. Select a waiting table and click Join.',
- '4. Wait for the GM to start the hand.',
- '5. On your turn choose Check, Call, Raise, Fold or All-In.',
- '6. During Draw select cards to Exchange, or Stand Pat.',
- '7. Watch the showdown and your virtual balance.',
- '8. Use Leave Table between hands to switch tables.',
- 'COMMANDS: /poker, /poker tables, /poker settings,',
- '/poker rankings, /poker rules, /poker help.',
- 'One active table per character. No real gold is moved.'
+ 'Poker Help - 5-Card Draw',
+ '1. Click Join Table, If there are no active tables, click Player Management, click Create Table.',
+ '2. Each player receives 5 cards. Ante is collected automatically.',
+ '3. On your turn, choose CHECK, CALL, BET, RAISE, FOLD or ALL-IN.',
+ '4. During Card Exchange, select up to 3 cards and click EXCHANGE CARDS, or click STAND PAT to keep your hand.',
+ '5. The best 5-card poker hand wins the Bank.',
+ '6. Game Master manages player balances, seating and game controls.',
 }
 
 local function fill(parent,lines,startY,step)
