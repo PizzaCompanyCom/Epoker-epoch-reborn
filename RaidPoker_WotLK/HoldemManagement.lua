@@ -99,10 +99,16 @@ function W.Refresh()
    elseif same==false then row.version:SetTextColor(1,.25,.25)
    else row.version:SetTextColor(.7,.7,.7) end
   else row.version:SetTextColor(.7,.7,.7) end
-  if W.selected==name and name then row.name:SetTextColor(1,.85,.2) else row.name:SetTextColor(1,1,1) end
+  if W.selected==name and name then
+   row.name:SetTextColor(1,.85,.2)
+   row.highlight:Show();row.top:Show();row.bottom:Show()
+  else
+   row.name:SetTextColor(1,1,1)
+   row.highlight:Hide();row.top:Hide();row.bottom:Hide()
+  end
  end
  local s=seat()
- detail:SetText(s and ('Selected: '..s.name..'   Balance '..money(s.stack)) or 'Select a player seat to manage.')
+ detail:SetText(s and ('Selected Player: '..s.name..'   Balance '..money(s.stack)) or 'Selected Player: none  |  Select a seat to manage.')
  logText:SetText(table.concat(W.logs,'\n'))
  availableNames={}
  if GetNumRaidMembers and GetNumRaidMembers()>0 then
@@ -206,6 +212,15 @@ local function build()
    bg:SetWidth(318);bg:SetHeight(21)
   end
   local row={}
+  row.highlight=frame:CreateTexture(nil,'ARTWORK');row.highlight:SetTexture('Interface\\Buttons\\WHITE8X8')
+  row.highlight:SetVertexColor(1,.72,.16,.2);row.highlight:SetPoint('TOPLEFT',frame,'TOPLEFT',21,y+1)
+  row.highlight:SetWidth(318);row.highlight:SetHeight(21);row.highlight:Hide()
+  row.top=frame:CreateTexture(nil,'OVERLAY');row.top:SetTexture('Interface\\Buttons\\WHITE8X8')
+  row.top:SetVertexColor(1,.75,.15,.95);row.top:SetPoint('TOPLEFT',frame,'TOPLEFT',21,y+1)
+  row.top:SetWidth(318);row.top:SetHeight(1);row.top:Hide()
+  row.bottom=frame:CreateTexture(nil,'OVERLAY');row.bottom:SetTexture('Interface\\Buttons\\WHITE8X8')
+  row.bottom:SetVertexColor(1,.75,.15,.95);row.bottom:SetPoint('TOPLEFT',frame,'TOPLEFT',21,y-20)
+  row.bottom:SetWidth(318);row.bottom:SetHeight(1);row.bottom:Hide()
   row.number=font(frame,25,y-3,19,tostring(i))
   row.name=font(frame,51,y-3,87,'[Empty]')
   row.balance=font(frame,144,y-3,63,'-')

@@ -49,11 +49,13 @@ function M.Assign(name)
  if not host() then return false,'Game Master only' end
  if not waiting() then return false,'Finish the hand first' end
  if not eligible(name) then return false,'Player must join lobby and raid' end
- if R.PokerVersionMatches and R.PokerVersionMatches(name)~=true then return false,'Incompatible or unknown addon version: '..name end
+ if name~=playerName() and R.PokerVersionMatches and R.PokerVersionMatches(name)~=true then return false,'Incompatible or unknown addon version: '..name end
  for i,s in ipairs(M.seats) do if s.name==name then return true end end
  if #M.seats>=10 then return false,'Table full (10 seats)' end
- M.seats[#M.seats+1]={name=name,stack=M.initialStack,sittingOut=false}
- audit('SEAT '..name);publishSeats();refresh();return true
+ local stack=math.max(0,math.floor(tonumber(M.initialStack) or 0))
+ M.seats[#M.seats+1]={name=name,stack=stack,sittingOut=false}
+ audit('SEAT '..name..(stack==0 and ' [BUSTED]' or ''))
+ publishSeats();refresh();return true
 end
 function M.Remove(name)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
@@ -64,7 +66,11 @@ function M.SetStack(name,silver)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
  silver=tonumber(silver)
  if not silver or silver<0 or silver>100000000 or silver~=math.floor(silver) then return false,'Invalid silver balance' end
- for _,s in ipairs(M.seats) do if s.name==name then s.stack=silver;audit('BALANCE '..name..' '..silver..'s');publishSeats();refresh();return true end end
+ for _,s in ipairs(M.seats) do if s.name==name then
+  local previous=s.stack;s.stack=silver
+  audit('BALANCE '..name..' '..silver..'s'..(silver==0 and ' [BUSTED]' or (previous==0 and silver>0 and not s.sittingOut and ' [PLAYING]' or '')))
+  publishSeats();refresh();return true
+ end end
  return false,'Player not seated'
 end
 function M.SitOut(name,value)
@@ -112,7 +118,12 @@ end
 function M.AfterAction()
  if not M.active or not host() then return end
  for i,p in ipairs(H.players) do
-  if M.seats[i] and M.seats[i].name==p.name then M.seats[i].stack=p.stack end
+  if M.seats[i] and M.seats[i].name==p.name then
+   local previous=M.seats[i].stack
+   M.seats[i].stack=math.max(0,tonumber(p.stack) or 0)
+   -- Zero chips during an all-in never ejects a player from the current hand.
+   if H.phase=='SHOWDOWN' and previous>0 and M.seats[i].stack==0 then audit('BUSTED '..p.name) end
+  end
  end
  if H.phase=='SHOWDOWN' then M.active=false;audit('SHOWDOWN HAND '..H.handNumber) end
  refresh()

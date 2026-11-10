@@ -67,7 +67,8 @@ cell(510,-119,60,'VERSION')
 cell(575,-119,48,'ACTION')
 for i=0,10 do line(20,-138-i*21,616,1,.34) end
 for _,x in ipairs({196,319,448,506,572}) do line(x,-114,1,234,.25) end
-local selectLabel=label(f,22,-366,600,'Selected: none')
+local selectLabel=label(f,22,-366,600,'Selected Player: none')
+selectLabel:SetFontObject('GameFontNormal')
 for i=1,10 do
  local y=-140-(i-1)*21
  if i%2==0 then
@@ -78,6 +79,17 @@ for i=1,10 do
  end
  local idx=i
  local row={}
+ row.highlight=f:CreateTexture(nil,'ARTWORK')
+ row.highlight:SetTexture('Interface\\Buttons\\WHITE8X8')
+ row.highlight:SetVertexColor(1,.72,.16,.18)
+ row.highlight:SetPoint('TOPLEFT',f,'TOPLEFT',21,y+1)
+ row.highlight:SetWidth(551);row.highlight:SetHeight(20);row.highlight:Hide()
+ row.top=f:CreateTexture(nil,'OVERLAY');row.top:SetTexture('Interface\\Buttons\\WHITE8X8')
+ row.top:SetVertexColor(1,.75,.15,.9);row.top:SetPoint('TOPLEFT',f,'TOPLEFT',21,y+1)
+ row.top:SetWidth(551);row.top:SetHeight(1);row.top:Hide()
+ row.bottom=f:CreateTexture(nil,'OVERLAY');row.bottom:SetTexture('Interface\\Buttons\\WHITE8X8')
+ row.bottom:SetVertexColor(1,.75,.15,.9);row.bottom:SetPoint('TOPLEFT',f,'TOPLEFT',21,y-18)
+ row.bottom:SetWidth(551);row.bottom:SetHeight(1);row.bottom:Hide()
  row.name=cell(30,y-4,162,'')
  row.balance=cell(207,y-4,108,'')
  row.status=cell(330,y-4,112,'')
@@ -85,7 +97,7 @@ for i=1,10 do
  row.version=cell(510,y-4,60,'')
  row.button=btn(f,'Select',575,y+1,58,function()
   local player=R.G.players[idx]
-  if player then selected=player.name;selectLabel:SetText('Selected: '..selected);R.RefreshPlayerManagement() end
+  if player then selected=player.name;selectLabel:SetText('Selected Player: '..selected);R.RefreshPlayerManagement() end
  end)
  rows[i]=row
 end
@@ -172,9 +184,12 @@ function R.RefreshPlayerManagement()
    found=true
    row.name:SetTextColor(1,.84,.35)
   else row.name:SetTextColor(1,1,1) end
+  if p and p.name==selected then row.highlight:Show();row.top:Show();row.bottom:Show()
+  else row.highlight:Hide();row.top:Hide();row.bottom:Hide() end
   if p then row.button:Show() else row.button:Hide() end
  end
- if selected and not found then selected=nil;selectLabel:SetText('Selected: none') end
+ if selected and not found then selected=nil end
+ selectLabel:SetText('Selected Player: '..(selected or 'none'))
  availableNames={}
  local seated={};for _,p in ipairs(R.G.players or {}) do seated[p.name]=true end
  if GetNumRaidMembers and GetNumRaidMembers()>0 then

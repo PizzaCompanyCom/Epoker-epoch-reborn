@@ -85,6 +85,14 @@ local function create()
  if R.HoldemSync then R.HoldemSync.remote=nil;R.HoldemSync.pending=nil;R.HoldemSync.received=0 end
  announce('O|'..N.session..'|'..safe(me())..'|'..localVersion()..'|'..protocol())
  announce(tableInfo())
+ -- Creating the table also reserves the creator's seat.
+ if R.HoldemMultiplayer and R.HoldemMultiplayer.Assign then
+  local ok,why=R.HoldemMultiplayer.Assign(me())
+  if not ok and R.Print then R.Print('Barrens: Could not seat Game Master: '..tostring(why)) end
+  if ok and R.HoldemMultiplayer.initialStack<=0 and R.Print then
+   R.Print('Insufficient Balance: You are seated with 0s. Set a positive balance in Player Management before playing.')
+  end
+ end
  refresh()
 end
 function N.Discover()
@@ -118,6 +126,11 @@ end
 function N.CreateSingle() create() end
 function N.JoinSingle()
  if N.active then
+  if N.owner and R.HoldemMultiplayer and R.HoldemMultiplayer.Assign then
+   R.HoldemMultiplayer.Assign(me())
+  elseif not N.owner and N.session then
+   announce('J|'..safe(N.session)..'|'..safe(me())..'|'..localVersion()..'|'..protocol())
+  end
   if R.HoldemUnified then R.HoldemUnified.SetMode('NETWORK') end
   if R.OpenBarrensTable then R.OpenBarrensTable() end
   return true
@@ -198,6 +211,7 @@ ev:SetScript('OnEvent',function(self,event,...)
  if not isRaidMember(sender) or sender==me() then return end
  local kind,session,who,remoteVersion,remoteProtocol=msg:match('^([A-Z])|([^|]+)|([^|]+)|([%w%._%-]+)|(%d+)$')
  if not kind then kind,session,who=msg:match('^([A-Z])|([^|]+)|([^|]+)$') end
+ if not kind then kind,session,who,remoteVersion=msg:match('^([A-Z])|([^|]+)|([^|]+)|([A-Z]+)$') end
  if not kind then
   if msg:match('^T|') and not N.active then
    local id,owner,count,phase=msg:match('^T|([^|]+)|([^|]+)|(%d+)|([A-Z]+)$')
@@ -225,10 +239,32 @@ ev:SetScript('OnEvent',function(self,event,...)
   end
   if R.PokerRecordPeerVersion then R.PokerRecordPeerVersion(sender,remoteVersion,remoteProtocol) end
   N.members[sender]=true
+  -- The Game Master seats a newly admitted, compatible player automatically.
+  -- An existing seat is reused; no duplicate seat is created.
+  if R.HoldemMultiplayer and R.HoldemMultiplayer.Assign then
+   local ok,why=R.HoldemMultiplayer.Assign(sender)
+   if ok then
+    for _,seat in ipairs(R.HoldemMultiplayer.seats) do
+     if seat.name==sender and (seat.stack or 0)<=0 then
+      announce('E|'..safe(N.session)..'|'..safe(sender)..'|ZERO')
+      break
+     end
+    end
+   end
+   if not ok then
+    if R.Print then R.Print('Barrens: '..sender..' joined lobby but could not be seated: '..tostring(why)) end
+    announce('E|'..safe(N.session)..'|'..safe(sender)..'|'..(why=='Table full (10 seats)' and 'FULL' or 'WAIT'))
+   end
+  end
   if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
   -- Send existing lobby membership to the newcomer as well.
   for member in pairs(N.members) do announce('M|'..safe(N.session)..'|'..safe(member)) end
   announce('M|'..safe(N.session)..'|'..safe(sender))
+ elseif kind=='E' and N.active and not N.owner and sender==N.host and who==me() and session==N.session then
+  local code=remoteVersion or msg:match('^E|[^|]+|[^|]+|([A-Z]+)$')
+  if code=='ZERO' then R.Print('Insufficient Balance: You are seated with 0s and cannot play until the Game Master adds funds.')
+  elseif code=='FULL' then R.Print('Table is full. You are connected but not seated.')
+  else R.Print('Connected, but automatic seating is not available yet. Contact the Game Master.') end
  elseif kind=='X' and N.active and not N.owner and sender==N.host and who==me() and session==N.session then
   if R.PokerShowVersionWarning then R.PokerShowVersionWarning(sender,remoteVersion or 'Unknown') end
   leave()

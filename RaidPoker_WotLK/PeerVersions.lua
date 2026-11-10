@@ -40,6 +40,7 @@ function R.PokerRecordPeerVersion(name,version,protocol)
 end
 function R.PokerPeerProtocol(name) if name==selfName() then return NETWORK_PROTOCOL end;return protocols[name] end
 function R.PokerVersionMatches(name)
+ if name==selfName() then return true end
  local v=R.GetPokerPeerVersion(name)
  if not v then return nil end
  return v==myVersion() and protocols[name]==NETWORK_PROTOCOL

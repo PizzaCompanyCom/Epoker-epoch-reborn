@@ -213,6 +213,8 @@ local function finishHand(reason)
   if (entry.balance or 0)<=0 and entry.status~='Busted' then
    entry.status='Busted'
    log('Auto Busted: '..entry.name..' (0g 0s)')
+  elseif (entry.balance or 0)>0 and entry.status=='Busted' then
+   entry.status='Playing'
   end
  end
  -- Capture evaluated combination names before publishing the result.
@@ -321,8 +323,8 @@ local function join(name)
  if not host() or G.phase~='LOBBY' then return end
  if player(name) or #G.players>=10 then return end
  if not G.solo and not UnitInRaid(name) then return end
- table.insert(G.players,{name=name,balance=G.stack,inhand=false,fold=false,allin=false,paid=0,total=0,done=false})
- log(name..' joined table');broadcast()
+ table.insert(G.players,{name=name,balance=G.stack,status=((G.stack or 0)<=0 and 'Busted' or 'Playing'),inhand=false,fold=false,allin=false,paid=0,total=0,done=false})
+ log(name..' joined table'..(((G.stack or 0)<=0) and ' [BUSTED: 0s]' or ''));broadcast()
 end
 local function request(kind,payload)
  if G.solo and kind=='JOIN' then say('Solo Debug Mode: bots are already seated.');return end
@@ -962,6 +964,9 @@ function R.AdminSetStatus(name,status)
  if status~='Playing' and status~='Sitting Out' and status~='Busted' then return end
  if G.phase~='LOBBY' and G.phase~='SHOWDOWN' then say('Change status between hands. Use Force Fold during a hand.');return end
  local p=player(name);if not p then say('Player not found.');return end
+ if status=='Playing' and (p.balance or 0)<=0 then
+  say('Cannot Sit In with zero balance. Ask Game Master to add funds.');return
+ end
  p.status=status
  adminRecord(p.name..' status: '..status);broadcast()
 end
