@@ -78,6 +78,7 @@ local buttonIcons={
  ['Exchange']='Interface\\Icons\\INV_Misc_Note_01',
  ['Stand Pat']='Interface\\Icons\\INV_Misc_Book_09',
  ['Tables']='Interface\\Icons\\INV_Misc_Book_09',
+ ['Join Table']='Interface\\Icons\\INV_Misc_GroupLooking',
  ['Leave Table']='Interface\\Icons\\Spell_Shadow_Teleport',
  ['Start Hand']='Interface\\Icons\\INV_Misc_Book_09',
  ['History']='Interface\\Icons\\INV_Misc_Note_01',
@@ -121,11 +122,11 @@ local function button(p,label,w,h,x,y,click)
    if w<95 then font:SetFontObject('GameFontNormalSmall') else font:SetFontObject('GameFontNormal') end
   end
   b.WarcraftIcon=icon
-  if label=='Poker Table' and p==R.Main then
+  if (label=='Poker Table' or label=='Join Table') and p==R.Main then
    local normal=b:GetNormalTexture()
-   if normal then normal:SetVertexColor(0.25,0.82,0.32,1) end
+   if normal then normal:SetVertexColor(0.82,0.22,0.22,1) end
    local pushed=b:GetPushedTexture()
-   if pushed then pushed:SetVertexColor(0.2,0.65,0.25,1) end
+   if pushed then pushed:SetVertexColor(0.65,0.16,0.16,1) end
   end
   local hover=b:CreateTexture(nil,'HIGHLIGHT')
   hover:SetTexture('Interface\\Buttons\\UI-ActionButton-Border')

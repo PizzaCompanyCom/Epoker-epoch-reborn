@@ -85,7 +85,10 @@ function R.BarrensCloseSoloGame()
  if mode()~='SOLO' then return false,'Leave the multiplayer table before closing Solo Debug' end
  if R.HoldemSoloDebug then R.HoldemSoloDebug.auto=false end
  H.phase='LOBBY';H.players={};H.board={};H.deck={};H.pot=0;H.actionSeat=nil
- H.handNumber=0;H.deck={};H.winners={};H.sidePots={};H.log={}
+ H.handNumber=0;H.dealer=0;H.smallBlindSeat=nil;H.bigBlindSeat=nil
+ H.currentBet=0;H.minRaise=H.bigBlind or 10
+ H.winners={};H.sidePots={};H.log={}
+ if R.BarrensClearSoloTableVisuals then R.BarrensClearSoloTableVisuals() end
  U.Refresh()
  return true
 end

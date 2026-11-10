@@ -45,10 +45,12 @@ function R.RefreshBarrensTimerSetting()
  if f and f.barrensTurnTimerButton then
   f.barrensTurnTimerButton:SetText('Turn Timer: '..(duration==0 and 'OFF' or duration..'s'))
  end
+ local leader=_G.RaidPokerBarrensLeaderControls
+ if leader and leader.timerButton then leader.timerButton:SetText('Turn Timer: '..(duration==0 and 'OFF' or duration..'s')) end
 end
 function R.CycleBarrensTurnTimer()
  if not host() then if R.Print then R.Print('Turn Timer: Game Master only.') end return end
- if not idle() then if R.Print then R.Print('Change the timer between hands.') end return end
+ if network() and not idle() then if R.Print then R.Print('Change the timer between hands.') end return end
  duration=(duration==15 and 30 or duration==30 and 60 or duration==60 and 0 or 15)
  db().barrensTurnTimer=duration
  key=nil;deadline=nil
@@ -73,6 +75,12 @@ local function updateTurn(s)
    announce()
   end
  end
+end
+function R.GetBarrensTurnTimerProgress(s)
+ updateTurn(s)
+ if not key or duration==0 then return 0,false end
+ local remain=deadline and math.max(0,deadline-GetTime()) or duration
+ return math.max(0,math.min(1,remain/duration)),true
 end
 function R.GetBarrensTurnTimerText(s)
  updateTurn(s)

@@ -2,7 +2,7 @@
 ## Title: Raid Poker WotLK
 ## Notes: Multi-game poker launcher; 5-Card Draw playable, The Barrens Hold'em release candidate.
 ## Author: Raid Poker Development
-## Version: 1.8.0-RC1-HF18
+## Version: 1.8.0-RC1-HF26
 ## SavedVariables: RaidPokerHoldemRecoveryDB, RaidPokerWotLKDB
 Core.lua
 Game.lua
@@ -33,6 +33,8 @@ HoldemMultiplayer.lua
 HoldemManagement.lua
 HoldemNetworkTable.lua
 HoldemUnified.lua
+HoldemTurnTimer.lua
+HoldemLeaderControls.lua
 HoldemRecords.lua
 HoldemOperations.lua
 HoldemSeatInspector.lua
@@ -48,3 +50,7 @@ HoldemTableDesk.lua
 HoldemIntegration.lua
 
 PeerVersions.lua
+
+Hotfix19.lua
+
+Hotfix20.lua

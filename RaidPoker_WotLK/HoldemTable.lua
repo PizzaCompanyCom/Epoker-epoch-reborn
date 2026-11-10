@@ -48,6 +48,7 @@ local function advanceEffects(self,dt)
  local wave=0.35+0.65*(0.5+0.5*math.sin(effects.clock*4.0))
  if seatWidgets then
   for i,w in ipairs(seatWidgets) do
+   if w.actionLayer and w.actionLayer:IsShown() and w.actionUntil and GetTime()>=w.actionUntil then w.actionLayer:Hide() end
    if w.glow and w.glow:IsShown() then w.glow:SetAlpha(wave*intensity) end
    if w.winnerGlow and w.winnerGlow:IsShown() then w.winnerGlow:SetAlpha((0.45+0.55*(0.5+0.5*math.sin(effects.clock*3.0)))*intensity) end
    if w.timerBG then
@@ -80,6 +81,22 @@ local function money(amount)
  if g>0 and s>0 then return g..'g '..s..'s' end
  if g>0 then return g..'g' end
  return s..'s'
+end
+-- Winner category is derived from the evaluated seven-card hand, not from card art.
+local handCategories={'HIGH CARD','ONE PAIR','TWO PAIR','THREE OF A KIND','STRAIGHT','FLUSH','FULL HOUSE','FOUR OF A KIND','STRAIGHT FLUSH'}
+local function showdownHandLabel(snapshot)
+ if snapshot.phase~='SHOWDOWN' then return nil end
+ local bestCategory=nil
+ for seat,amount in pairs(snapshot.winners or {}) do
+  if (tonumber(amount) or 0)>0 then
+   local rank=snapshot.winningRanks and snapshot.winningRanks[seat]
+   local category=type(rank)=='table' and tonumber(rank[1]) or nil
+   if category and (not bestCategory or category>bestCategory) then bestCategory=category end
+  end
+ end
+ if bestCategory then return handCategories[bestCategory+1] end
+ -- A fold victory has no poker combination; do not invent one.
+ return 'WINNER BY FOLD'
 end
 local function paidPot(snapshot)
  if snapshot.phase~='SHOWDOWN' then return snapshot.pot or 0 end
@@ -191,9 +208,21 @@ local function makeSeat(parent,i,x,y)
  local badge=label(seat,'','GameFontNormalSmall');badge:SetPoint('TOPRIGHT',seat,'TOPRIGHT',-4,-4)
  local winnerLabel=label(seat,'WINNER','GameFontNormalSmall');winnerLabel:SetPoint('BOTTOMRIGHT',seat,'BOTTOMRIGHT',-3,4);winnerLabel:SetTextColor(1,0.84,0.23);winnerLabel:Hide()
  local stateLabel=label(seat,'','GameFontNormalSmall');stateLabel:SetPoint('BOTTOMLEFT',seat,'BOTTOMLEFT',3,4);stateLabel:Hide()
+ local actionLayer=CreateFrame('Frame',nil,seat)
+ actionLayer:SetAllPoints(seat);actionLayer:SetFrameLevel(seat:GetFrameLevel()+12)
+ local actionCover=actionLayer:CreateTexture(nil,'ARTWORK')
+ actionCover:SetTexture('Interface\\Buttons\\WHITE8X8')
+ actionCover:SetPoint('TOPLEFT',actionLayer,'TOPLEFT',3,-19)
+ actionCover:SetPoint('BOTTOMRIGHT',actionLayer,'BOTTOMRIGHT',-3,3)
+ actionCover:SetVertexColor(.02,.05,.08,.97)
+ local actionLabel=actionLayer:CreateFontString(nil,'OVERLAY','GameFontNormalLarge')
+ actionLabel:SetPoint('CENTER',actionLayer,'CENTER',0,-8)
+ if actionLabel.SetFont then actionLabel:SetFont('Fonts\\FRIZQT__.TTF',18,'OUTLINE') end
+ actionLabel:SetShadowOffset(1,-1)
+ actionLayer:Hide()
  local timerBG=rect(seat,130,3,0.13,0.13,0.13,0.9);timerBG:SetPoint('BOTTOM',seat,'BOTTOM',0,-3);timerBG:Hide()
  local timerFill=rect(seat,130,3,0.20,0.9,0.32,0.95);timerFill:SetPoint('LEFT',timerBG,'LEFT');timerFill:Hide()
- return {frame=seat,bg=bg,glow=glow,winnerGlow=winnerGlow,portrait=portrait,name=name,status=status,cards={c1,c2},badge=badge,winnerLabel=winnerLabel,stateLabel=stateLabel,timerBG=timerBG,timerFill=timerFill}
+ return {frame=seat,bg=bg,glow=glow,winnerGlow=winnerGlow,portrait=portrait,name=name,status=status,cards={c1,c2},badge=badge,winnerLabel=winnerLabel,stateLabel=stateLabel,timerBG=timerBG,timerFill=timerFill,actionCover=actionCover,actionLabel=actionLabel,actionLayer=actionLayer}
 end
 local function feedback(ok,msg)
  if not ok and R.Print then R.Print('Barrens Holdem: '..(msg or 'Invalid action')) end
@@ -221,7 +250,7 @@ local function build()
  for i=1,12 do local line=rect(felt,794,1,0.07,0.04,0.02,0.16);line:SetPoint('TOP',felt,'TOP',0,-12-i*32);themeLines[i]=line end
  -- Larger community cards, shifted left to leave room for the pot display.
  phase=label(felt,'','GameFontNormal');phase:SetPoint('TOP',felt,'TOP',-105,-113)
- turnText=label(felt,'','GameFontHighlight');turnText:SetPoint('TOP',felt,'TOP',-105,-140)
+ turnText=label(felt,'','GameFontHighlight');turnText:SetPoint('TOP',felt,'TOP',-105,-140);turnText:SetWidth(390);turnText:SetJustifyH('CENTER');turnText:SetFont('Fonts\\FRIZQT__.TTF',19,'OUTLINE')
  boardCards={}
  for i=1,5 do local c=card(felt,76,106);c:SetPoint('CENTER',felt,'CENTER',-210+(i-1)*84,0);boardCards[i]=c end
  -- Dedicated pot area: native 3.3.5a coin textures, no letter placeholders.
@@ -322,7 +351,13 @@ local function update()
   end
  end
  sideText:SetText(table.concat(parts,'\n'))
- turnText:SetText(s.actionSeat and ('TURN: '..s.players[s.actionSeat].name) or (s.phase=='SHOWDOWN' and 'SHOWDOWN COMPLETE' or ''))
+ if s.phase=='SHOWDOWN' then
+  turnText:SetText(showdownHandLabel(s) or 'SHOWDOWN')
+  turnText:SetTextColor(1,0.78,0.18)
+ else
+  turnText:SetText(s.actionSeat and s.players[s.actionSeat] and ('TURN: '..s.players[s.actionSeat].name) or '')
+  turnText:SetTextColor(1,0.95,0.75)
+ end
  for i=1,5 do boardCards[i]:SetCard(s.board[i],false) end
  for i,w in ipairs(seatWidgets) do
   local p=s.players[i]
@@ -362,10 +397,16 @@ local function update()
    local status=(p.folded and ' FOLD' or (p.allIn and ' ALL-IN' or ''))
       -- Keep status inside its own seat, even with a large stack.
    w.status:SetText(money(p.stack)..' | Bet '..money(p.street)..status..(s.winners[i] and (' WIN +'..money(s.winners[i])) or ''))
+   local action=R.HF19ActionFor and R.HF19ActionFor('HOLDEM',p.name,s.log,s.handNumber)
+   if action then
+    w.actionLabel:SetText(action);w.actionLabel:SetTextColor(R.HF19ActionColor(action));w.actionUntil=R.HF19ActionExpiry and R.HF19ActionExpiry('HOLDEM',p.name) or (GetTime()+3);w.actionLayer:Show()
+   else w.actionLayer:Hide() end
    local hole=R.BarrensUnifiedHole and R.BarrensUnifiedHole(i,s) or nil
+   -- Opponents' hole cards are never revealed during an active hand, including solo debug.
+   if p.name~=UnitName('player') and s.phase~='SHOWDOWN' then hole=nil end
    for k=1,2 do w.cards[k]:SetCard(hole and hole[k] and (type(hole[k])=='string' and hole[k] or H.CardLabel(hole[k])) or nil,not hole and (p.dealt or (s.phase~='LOBBY' and s.phase~='SHOWDOWN'))) end
   else
-   w.frame:Hide();w.glow:Hide();w.winnerGlow:Hide();w.portrait:Hide();w.winnerLabel:Hide();w.stateLabel:Hide();w.timerBG:Hide();w.timerFill:Hide();w.name:SetText('');w.status:SetText('');w.badge:SetText('')
+   w.frame:Hide();w.actionLayer:Hide();w.glow:Hide();w.winnerGlow:Hide();w.portrait:Hide();w.winnerLabel:Hide();w.stateLabel:Hide();w.timerBG:Hide();w.timerFill:Hide();w.name:SetText('');w.status:SetText('');w.badge:SetText('')
    for k=1,2 do w.cards[k]:SetCard(nil,false) end
   end
  end
@@ -398,6 +439,12 @@ function R.OpenBarrensTableEffects()
  if not f then build() end
  if f then f:Show();f:Raise() end
  if effects.options then effects.options:Show();effects.options:Raise() end
+end
+-- Clear all cached solo table effects and repaint immediately after Close Solo.
+function R.BarrensClearSoloTableVisuals()
+ clearCoins()
+ effects.previous=nil
+ if f then update() end
 end
 function R.OpenBarrensTable()
  build();update();f:Show();f:Raise()

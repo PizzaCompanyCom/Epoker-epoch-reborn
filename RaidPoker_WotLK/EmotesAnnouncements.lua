@@ -8,7 +8,7 @@ local function config()
  db.emoteAnnouncements=db.emoteAnnouncements or {}
  local d=db.emoteAnnouncements
  for _,mode in ipairs({'DRAW','HOLDEM'}) do
-  if d[mode..'Actions']==nil then d[mode..'Actions']=true end
+  if d[mode..'Actions']==nil then d[mode..'Actions']=false end
   if d[mode..'ActionChannel']==nil then d[mode..'ActionChannel']='SAY' end
  end
  return d
@@ -16,11 +16,13 @@ end
 local function channelValid(ch)
  if ch=='RAID' then return IsInRaid and IsInRaid() or GetNumRaidMembers()>0 end
  if ch=='GUILD' then return IsInGuild() end
+ if ch=='CHANNEL' then return GetChannelName('Epoker') and GetChannelName('Epoker')>0 end
  return true
 end
 local function send(text,ch)
  if not channelValid(ch) then if R.Print then R.Print('Channel '..ch..' unavailable.') end return end
- SendChatMessage(string.sub(text,1,230),ch)
+ if ch=='CHANNEL' then SendChatMessage(string.sub(text,1,230),'CHANNEL',nil,GetChannelName('Epoker'))
+ else SendChatMessage(string.sub(text,1,230),ch) end
 end
 local function cash(s)
  s=math.max(0,math.floor(tonumber(s) or 0));return math.floor(s/100)..'g '..(s%100)..'s'
@@ -54,45 +56,55 @@ local function label(parent,text,x,y)
 end
 local function window(mode)
  if frames[mode] then return frames[mode] end
- local f=CreateFrame('Frame','RaidPokerEmotes'..mode,UIParent);f:SetSize(470,365);f:SetPoint('CENTER');f:SetFrameStrata('FULLSCREEN_DIALOG');f:SetMovable(true);f:EnableMouse(true);f:SetClampedToScreen(true)
+ local f=CreateFrame('Frame','RaidPokerEmotes'..mode,UIParent);f:SetSize(470,410);f:SetPoint('CENTER');f:SetFrameStrata('FULLSCREEN_DIALOG');f:SetMovable(true);f:EnableMouse(true);f:SetClampedToScreen(true)
  f:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=32,insets={left=9,right=9,top=9,bottom=9}})
  f:SetScript('OnMouseDown',function(self,button)if button=='LeftButton' then self:StartMoving()end end)
  f:SetScript('OnMouseUp',function(self)self:StopMovingOrSizing()end)
  label(f,'EMOTES & ANNOUNCEMENTS  -  '..(mode=='DRAW' and '5-CARD DRAW' or "HOLD'EM"),20,-19)
  btn(f,'X',430,-12,25,function()f:Hide()end)
- label(f,'PLAYER EMOTES',22,-62)
+ local joinChannel=btn(f,'Join /Epoker Channel',22,-51,205,function()
+  if GetChannelName('Epoker') and GetChannelName('Epoker')>0 then
+   if R.Print then R.Print('Already joined Epoker channel.') end
+  elseif JoinChannelByName then JoinChannelByName('Epoker')
+  elseif ChatFrame1EditBox then ChatFrame1EditBox:SetText('/join Epoker');ChatEdit_SendText(ChatFrame1EditBox,0) end
+ end)
+ local ic=joinChannel:CreateTexture(nil,'OVERLAY');ic:SetTexture('Interface\\Icons\\INV_Misc_Note_01');ic:SetSize(16,16);ic:SetPoint('LEFT',joinChannel,5,0)
+ label(f,'PLAYER EMOTES',22,-89)
  local emotes={{'Cry','/cry','Ability_Creature_Cursed_01'},{'Cheer','/cheer','INV_Misc_EngGizmos_19'},{'Roar','/roar','Ability_Druid_ChallangingRoar'},{'Train','/train','INV_Misc_Toy_10'},{'Chicken','/chicken','Spell_Magic_PolymorphChicken'}}
  for i,v in ipairs(emotes) do
-  local b=btn(f,v[1],18+(i-1)*89,-85,86,function()if DoEmote then DoEmote(string.upper(string.sub(v[2],2)))end end)
+  local b=btn(f,v[1],18+(i-1)*89,-112,86,function()if DoEmote then DoEmote(string.upper(string.sub(v[2],2)))end end)
   local ico=b:CreateTexture(nil,'OVERLAY');ico:SetTexture('Interface\\Icons\\'..v[3]);ico:SetSize(16,16);ico:SetPoint('LEFT',b,4,0)
  end
- label(f,'LAST HAND WINNER',22,-134)
- local winnerPreview=label(f,'No completed hand yet',22,-156);winnerPreview:SetWidth(425);winnerPreview:SetJustifyH('LEFT')
- label(f,'Winner channel:',22,-188)
- local channels={'SAY','YELL','GUILD','RAID'}
- local c=btn(f,'',155,-180,130,function(self)
+ label(f,'LAST HAND WINNER',22,-162)
+ local winnerPreview=label(f,'No completed hand yet',22,-184);winnerPreview:SetWidth(425);winnerPreview:SetJustifyH('LEFT')
+ label(f,'Winner channel:',22,-216)
+ local channels={'SAY','YELL','GUILD','RAID','CHANNEL'}
+ local c=btn(f,'',155,-208,130,function(self)
   local d=config();local idx=1
   for i,v in ipairs(channels) do if v==(d[mode..'WinnerChannel'] or 'RAID') then idx=i end end
-  d[mode..'WinnerChannel']=channels[idx%#channels+1];self:SetText('/'..string.lower(d[mode..'WinnerChannel']))
+  d[mode..'WinnerChannel']=channels[idx%#channels+1];self:SetText((d[mode..'WinnerChannel']=='CHANNEL' and '/Epoker' or '/'..string.lower(d[mode..'WinnerChannel'])))
  end)
- btn(f,'Announce Winner',295,-180,150,function()
+ btn(f,'Announce Winner',295,-208,150,function()
   local r=result(mode);if not r then if R.Print then R.Print('No completed hand result available.')end return end
   send('[EpokerWoW] Winner: '..r,config()[mode..'WinnerChannel'] or 'RAID')
  end)
- label(f,'BETTING ACTION ANNOUNCEMENTS',22,-234)
- local toggle=btn(f,'',22,-257,250,function(self)
+ label(f,'BETTING ACTION ANNOUNCEMENTS',22,-262)
+ local toggle=btn(f,'',22,-285,250,function(self)
   local d=config();d[mode..'Actions']=not d[mode..'Actions'];self:SetText('Auto Announce: '..(d[mode..'Actions'] and 'ON' or 'OFF'))
  end)
- local actionChannel=btn(f,'',282,-257,162,function(self)
-  local d=config();d[mode..'ActionChannel']=(d[mode..'ActionChannel']=='SAY' and 'RAID' or 'SAY');self:SetText('Channel: /'..string.lower(d[mode..'ActionChannel']))
+ local actionChannel=btn(f,'',282,-285,162,function(self)
+  local d=config();local channels={'SAY','RAID','CHANNEL'};local i=1
+  for j,v in ipairs(channels) do if v==d[mode..'ActionChannel'] then i=j end end
+  d[mode..'ActionChannel']=channels[i%#channels+1]
+  self:SetText('Channel: '..(d[mode..'ActionChannel']=='CHANNEL' and '/Epoker' or '/'..string.lower(d[mode..'ActionChannel'])))
  end)
- label(f,'Check / Call / Raise / Fold / All-In',22,-302)
- label(f,'Only your actions are announced. No automatic gold transfer.',22,-326)
+ label(f,'Check / Call / Raise / Fold / All-In',22,-330)
+ label(f,'Only your actions are announced. No automatic gold transfer.',22,-354)
  f:SetScript('OnShow',function()
   local d=config()
-  c:SetText('/'..string.lower(d[mode..'WinnerChannel'] or 'RAID'))
+  c:SetText((d[mode..'WinnerChannel']=='CHANNEL' and '/Epoker' or '/'..string.lower(d[mode..'WinnerChannel'] or 'RAID')))
   toggle:SetText('Auto Announce: '..(d[mode..'Actions'] and 'ON' or 'OFF'))
-  actionChannel:SetText('Channel: /'..string.lower(d[mode..'ActionChannel'] or 'SAY'))
+  actionChannel:SetText('Channel: '..(d[mode..'ActionChannel']=='CHANNEL' and '/Epoker' or '/'..string.lower(d[mode..'ActionChannel'] or 'SAY')))
   local r=result(mode);winnerPreview:SetText(r and string.sub(r,1,75) or 'No completed hand yet')
  end)
  f:Hide();frames[mode]=f;return f

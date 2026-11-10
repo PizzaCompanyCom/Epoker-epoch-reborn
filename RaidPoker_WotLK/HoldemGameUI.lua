@@ -25,7 +25,7 @@ local function paidPot(snapshot)
 end
 
 local frame,phaseText,potText,turnText,handCards,boardCards,buttons,raiseBox,statusText,historyText,startButton,resetButton
-local currentBetText,toCallText,balanceText,timerText,anteGold,anteSilver,stackGold,stackSilver,raiseGold,raiseSilver
+local currentBetText,toCallText,balanceText,timerText,turnTimerBar,anteGold,anteSilver,stackGold,stackSilver,raiseGold,raiseSilver
 local themeArt,themeTint
 local function txt(parent,value,font)
  local x=parent:CreateFontString(nil,'OVERLAY',font or 'GameFontNormal');x:SetText(value or '');return x
@@ -42,7 +42,7 @@ local function iconButton(parent,label,texture,w,h,callback)
  if texture then
   local icon=b:CreateTexture(nil,'ARTWORK')
   icon:SetTexture(texture);icon:SetSize(20,20);icon:SetPoint('LEFT',b,'LEFT',7,0)
-  if label=='Tables' or label=='Leave Table' then icon:SetVertexColor(0.45,0.85,1,1) end
+  if label=='Leave Table' then icon:SetVertexColor(0.45,0.85,1,1) end
   -- Keep the icon visible even when the button is disabled.
   icon:SetDrawLayer('OVERLAY', 7)
   local labelRegion=b:GetFontString()
@@ -255,7 +255,7 @@ local statsFrame,statsRows
 function R.OpenBarrensStatistics()
  if not statsFrame then
   statsFrame=CreateFrame('Frame','RaidPokerBarrensStatistics',UIParent)
-  statsFrame:SetSize(440,365);statsFrame:SetPoint('CENTER',UIParent,'CENTER',-420,0)
+  statsFrame:SetSize(570,390);statsFrame:SetPoint('CENTER',UIParent,'CENTER',-420,0)
   statsFrame:SetFrameStrata('DIALOG');statsFrame:SetMovable(true);statsFrame:EnableMouse(true)
   statsFrame:RegisterForDrag('LeftButton')
   statsFrame:SetScript('OnDragStart',function(self)self:StartMoving()end)
@@ -264,9 +264,26 @@ function R.OpenBarrensStatistics()
   local heading=txt(statsFrame,"THE BARRENS HOLD'EM - STATISTICS",'GameFontNormalLarge');heading:SetPoint('TOP',statsFrame,0,-19)
   button(statsFrame,'X',27,23,function()statsFrame:Hide()end):SetPoint('TOPRIGHT',statsFrame,-12,-12)
   statsRows={}
-  for i=1,12 do
-   local row=txt(statsFrame,'','GameFontHighlightSmall');row:SetPoint('TOPLEFT',statsFrame,20,-54-(i-1)*23)
-   row:SetWidth(400);row:SetJustifyH('LEFT');statsRows[i]=row
+  local xs={20,74,254,354,456};local widths={48,170,94,94,90}
+  local headers={'SEAT','PLAYER','STACK','BET','STATUS'}
+  for c=1,5 do
+   local head=txt(statsFrame,headers[c],'GameFontNormalSmall')
+   head:SetPoint('TOPLEFT',statsFrame,xs[c],-79);head:SetWidth(widths[c])
+  end
+  statsRows[1]=txt(statsFrame,'','GameFontHighlightSmall');statsRows[1]:SetPoint('TOPLEFT',statsFrame,20,-51);statsRows[1]:SetWidth(530)
+  statsRows[2]=txt(statsFrame,'','GameFontHighlightSmall');statsRows[2]:Hide()
+  for i=1,10 do
+   local y=-104-(i-1)*24
+   local bg=statsFrame:CreateTexture(nil,'BACKGROUND');bg:SetTexture('Interface\\Buttons\\WHITE8X8')
+   bg:SetPoint('TOPLEFT',statsFrame,16,y+3);bg:SetSize(537,23)
+   bg:SetVertexColor(.24,.25,.27,i%2==0 and .22 or .10)
+   local row={}
+   for c=1,5 do
+    local cell=txt(statsFrame,'','GameFontHighlightSmall')
+    cell:SetPoint('TOPLEFT',statsFrame,xs[c],y);cell:SetWidth(widths[c]);cell:SetJustifyH('LEFT')
+    row[c]=cell
+   end
+   statsRows[i+2]=row
   end
  end
  if statsFrame:IsShown() then statsFrame:Hide() else statsFrame:Show() end
@@ -277,13 +294,12 @@ function R.RefreshBarrensStatistics()
  local s=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot() or H.GetPublicSnapshot()
  if not s then return end
  statsRows[1]:SetText('Hand: '..tostring(s.handNumber or 0)..'   Phase: '..tostring(s.phase or 'LOBBY')..'   Pot: '..money(paidPot(s)))
- statsRows[2]:SetText('SEAT   PLAYER                         STACK          BET        STATUS')
  for i=1,10 do
   local p=s.players and s.players[i]
-  if p then
-   local state=p.folded and 'Folded' or (p.allIn and 'All-In' or 'Playing')
-   statsRows[i+2]:SetText(string.format('%2d     %-19s  %-10s %-9s %s',i,tostring(p.name or '?'):sub(1,19),money(p.stack or p.balance or 0),money(p.street or p.bet or 0),state))
-  else statsRows[i+2]:SetText(string.format('%2d     Empty',i)) end
+  local cells=statsRows[i+2]
+  local state=p and (p.folded and 'Folded' or (p.allIn and 'All-In' or 'Playing')) or ''
+  local values={tostring(i),p and tostring(p.name or '?'):sub(1,19) or 'Empty',p and money(p.stack or p.balance or 0) or '',p and money(p.street or p.bet or 0) or '',state}
+  for c=1,5 do cells[c]:SetText(values[c]) end
  end
 end
 
@@ -351,12 +367,21 @@ local function build()
  inner:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\Tooltips\\UI-Tooltip-Border',edgeSize=14,insets={left=2,right=2,top=2,bottom=2}})
  inner:SetBackdropColor(0,0.035,0.025,0.66)
  inner:SetBackdropBorderColor(0.45,0.38,0.19,0.9)
- local border=panel(felt,746,4,0.55,0.34,0.13);border:SetPoint('BOTTOM',felt)
+ -- HF23: remove the obsolete gold divider; the turn timer is the only horizontal indicator here.
+
  handCards={}
  for i=1,2 do local c=card(felt,91,133);c:SetPoint('TOP',felt,(i==1 and -55 or 55),-14);handCards[i]=c end
  boardCards={}
  for i=1,5 do local c=card(felt,49,71);c:SetPoint('TOP',felt,(i-3)*62,-161);boardCards[i]=c end
- timerText=txt(frame,'Waiting for players','GameFontNormalSmall');timerText:SetPoint('TOP',frame,0,-360)
+ -- Dedicated countdown strip replaces the decorative yellow divider during a turn.
+ turnTimerBar=CreateFrame('StatusBar',nil,frame)
+ turnTimerBar:SetSize(705,15);turnTimerBar:SetPoint('TOP',frame,0,-349)
+ turnTimerBar:SetStatusBarTexture('Interface\\TargetingFrame\\UI-StatusBar')
+ turnTimerBar:SetStatusBarColor(0.25,0.85,0.35,1)
+ turnTimerBar:SetMinMaxValues(0,1);turnTimerBar:SetValue(0);turnTimerBar:Hide()
+ timerText=txt(frame,'Waiting for players','GameFontNormalSmall')
+ timerText:SetPoint('TOP',frame,0,-368)
+ timerText:SetTextColor(1,0.85,0.3)
  local infoBackdrop=CreateFrame('Frame',nil,frame);infoBackdrop:SetSize(746,48);infoBackdrop:SetPoint('TOP',frame,0,-377)
  infoBackdrop:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8'});infoBackdrop:SetBackdropColor(0,0,0,0)
  phaseText=txt(frame,'','GameFontNormalSmall');phaseText:SetPoint('TOPLEFT',frame,25,-385);phaseText:Hide()
@@ -372,17 +397,25 @@ local function build()
  potText:SetTextColor(1,0.78,0.19);currentBetText:SetTextColor(1,0.49,0.16);toCallText:SetTextColor(0.39,0.77,1);balanceText:SetTextColor(0.52,0.95,0.59)
  turnText=txt(frame,'','GameFontNormalSmall');turnText:SetPoint('TOPRIGHT',frame,-26,-385)
  -- Reuse the familiar Draw-style primary table controls, with Hold'em handlers.
- local function lobby() if R.OpenBarrensNetworkLobby then R.OpenBarrensNetworkLobby() end end
+ local function joinTable()
+  local n=R.HoldemNetwork
+  if not n or not n.JoinSingle then
+   if R.Print then R.Print('Holdem network is unavailable.') end
+   return
+  end
+  local ok,why=n.JoinSingle()
+  if not ok and why~='No active table' and R.Print then R.Print(why or 'Unable to join table.') end
+ end
  local function leaveTable()
   if R.BarrensNetworkLeave then R.BarrensNetworkLeave()
-  else lobby() end
+  elseif R.OpenBarrensNetworkLobby then R.OpenBarrensNetworkLobby() end
  end
  local primary={
-  {'Tables','Interface\\Buttons\\UI-PlusButton-Up',lobby},
+  {'Join Table','Interface\\Icons\\INV_Misc_GroupLooking',joinTable},
   {'Leave Table','Interface\\Buttons\\UI-MinusButton-Up',leaveTable},
   {'Start Hand','Interface\\Icons\\INV_Gauntlets_05',function()if R.BarrensUnifiedStart then message(R.BarrensUnifiedStart()) else message(H.StartPreviewHand()) end end},
   {'History','Interface\\Icons\\INV_Misc_Note_01',function()if R.OpenBarrensHistory then R.OpenBarrensHistory() elseif R.Print then R.Print('Holdem: recent actions are displayed in the main window.') end end},
-  {'Leader','Interface\\Icons\\INV_Misc_Head_Human_01',function()if R.OpenBarrensGMTransfer then R.OpenBarrensGMTransfer() elseif R.OpenBarrensManagement then R.OpenBarrensManagement() end end},
+  {'Leader','Interface\\Icons\\INV_Misc_Head_Human_01',function()if R.OpenBarrensLeaderControls then R.OpenBarrensLeaderControls() end end},
  }
  local primaryButtons={}
  for i,v in ipairs(primary) do
@@ -460,11 +493,11 @@ local function build()
  -- Removed obsolete LOCAL PREVIEW caption; state remains available in Solo Debug.
  historyText=txt(frame,'','GameFontHighlightSmall');historyText:SetPoint('TOPLEFT',frame,27,-723);historyText:SetWidth(725);historyText:SetHeight(17);historyText:SetJustifyH('LEFT')
  -- One aligned bottom row, following the 5-Card Draw layout.
- local activityButton=iconButton(frame,'Betting Activity','Interface\\Icons\\INV_Misc_Note_01',170,34,function()R.OpenBarrensBettingActivity()end)
+ local activityButton=iconButton(frame,'Betting Activity','Interface\\Icons\\INV_Misc_Note_01',170,34,function()local w=_G.RaidPokerBarrensBettingActivity;if w and w:IsShown() then w:Hide() else R.OpenBarrensBettingActivity() end end)
  activityButton:SetPoint('BOTTOMLEFT',frame,216,76)
  local playerButton=iconButton(frame,'Player Management','Interface\\Icons\\INV_Misc_Head_Human_01',170,34,function()local f=_G.RaidPokerBarrensManagement;if f and f:IsShown() then f:Hide() elseif R.OpenBarrensManagement then R.OpenBarrensManagement() end end)
  playerButton:SetPoint('BOTTOMLEFT',frame,406,76)
- local statsButton=iconButton(frame,'Statistics','Interface\\Icons\\INV_Misc_Book_11',170,34,function()R.OpenBarrensStatistics()end)
+ local statsButton=iconButton(frame,'Statistics','Interface\\Icons\\INV_Misc_Book_11',170,34,function()local w=_G.RaidPokerBarrensStatistics;if w and w:IsShown() then w:Hide() else R.OpenBarrensStatistics() end end)
  statsButton:SetPoint('BOTTOMLEFT',frame,596,76)
  local emotesButton=iconButton(frame,'Emotes','Interface\\Icons\\INV_Misc_Head_Human_02',170,34,function()if R.ToggleEmotesAnnouncements then R.ToggleEmotesAnnouncements('HOLDEM') elseif R.Print then R.Print('Emotes module not loaded; check addon files.')end end)
  emotesButton:SetPoint('BOTTOMLEFT',frame,26,76)
@@ -490,6 +523,15 @@ local function refresh()
  toCallText:SetText('TO CALL: '..money(math.max(0,(tonumber(s.currentBet) or 0)-myBet)))
  balanceText:SetText('YOUR BALANCE: '..money(me and (me.stack or me.balance or 0) or 0))
  timerText:SetText(R.GetBarrensTurnTimerText and R.GetBarrensTurnTimerText(s) or (s.phase=='LOBBY' and 'Waiting for players' or ('Hand in progress  |  '..(s.phase or ''))))
+ if turnTimerBar and R.GetBarrensTurnTimerProgress then
+  local progress,active=R.GetBarrensTurnTimerProgress(s)
+  if active then
+   turnTimerBar:SetValue(progress);turnTimerBar:Show()
+   if progress<0.25 then turnTimerBar:SetStatusBarColor(0.9,0.18,0.15,1)
+   elseif progress<0.5 then turnTimerBar:SetStatusBarColor(0.95,0.65,0.12,1)
+   else turnTimerBar:SetStatusBarColor(0.2,0.85,0.35,1) end
+  else turnTimerBar:Hide() end
+ end
  -- Local preview: seat 1 is the test user's hand. Never reuse this exposure in network play.
  local hole
  if R.BarrensUnifiedHole then

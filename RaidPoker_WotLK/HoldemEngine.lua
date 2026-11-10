@@ -96,7 +96,7 @@ local function calculatePots()
  return pots
 end
 local function finish()
- H.phase='SHOWDOWN';H.actionSeat=nil;H.winners={};H.sidePots=calculatePots()
+ H.phase='SHOWDOWN';H.actionSeat=nil;H.winners={};H.winningRanks={};H.sidePots=calculatePots()
  local strengths={}
  for i,p in ipairs(H.players) do
   if inHand(i) then
@@ -105,6 +105,7 @@ local function finish()
    if #cards>=5 then strengths[i]=best7(cards) end
   end
  end
+ H.winningRanks=strengths
  local paid=0
  for pi,pot in ipairs(H.sidePots) do
   local best;local winners={}
@@ -167,7 +168,7 @@ local function advanceIfReady()
  end
 end
 function H.ResetPreview()
- H.phase='LOBBY';H.board={};H.deck={};H.pot=0;H.dealer=0;H.handNumber=0;H.actionSeat=nil;H.sidePots={};H.winners={};H.log={}
+ H.phase='LOBBY';H.board={};H.deck={};H.pot=0;H.dealer=0;H.handNumber=0;H.actionSeat=nil;H.sidePots={};H.winners={};H.winningRanks={};H.log={}
  H.players={}
  local bots=math.max(1,math.min(9,math.floor(tonumber(H.debugBots) or 3)))
  for i=1,bots+1 do
@@ -247,7 +248,7 @@ function H.CardLabel(card)
  return (ranks[card.rank] or tostring(card.rank))..card.suit
 end
 function H.GetPublicSnapshot()
- local s={phase=H.phase,handNumber=H.handNumber,pot=H.pot,board={},players={},actionSeat=H.actionSeat,currentBet=H.currentBet or 0,minRaise=H.minRaise or H.bigBlind,sidePots=H.sidePots,winners=H.winners,log=H.log}
+ local s={phase=H.phase,handNumber=H.handNumber,pot=H.pot,board={},players={},actionSeat=H.actionSeat,currentBet=H.currentBet or 0,minRaise=H.minRaise or H.bigBlind,sidePots=H.sidePots,winners=H.winners,winningRanks=H.winningRanks,log=H.log}
  for i,c in ipairs(H.board) do s.board[i]=H.CardLabel(c) end
  for i,p in ipairs(H.players) do
   s.players[i]={name=p.name,stack=p.stack,committed=p.committed,street=p.street,allIn=p.allIn,folded=p.folded,dealer=(i==H.dealer),smallBlind=(i==H.smallBlindSeat),bigBlind=(i==H.bigBlindSeat),dealt=p.dealt}

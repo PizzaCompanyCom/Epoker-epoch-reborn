@@ -549,6 +549,8 @@ function R.BuildGame(main)
    face:SetTexture(CARD_BACK);face:SetAllPoints(t);face:Hide()
    s.cardFaces[c]=face
   end
+  s.actionCover=s:CreateTexture(nil,'OVERLAY',nil,7);s.actionCover:SetTexture('Interface\\Buttons\\WHITE8X8');s.actionCover:SetPoint('TOPLEFT',s,3,-24);s.actionCover:SetPoint('BOTTOMRIGHT',s,-3,3);s.actionCover:SetVertexColor(.02,.05,.08,.97);s.actionCover:Hide()
+  s.actionLabel=s:CreateFontString(nil,'OVERLAY','GameFontNormalLarge');s.actionLabel:SetPoint('CENTER',s,0,-12);s.actionLabel:SetFont('Fonts\\FRIZQT__.TTF',18,'OUTLINE');s.actionLabel:SetShadowOffset(1,-1);s.actionLabel:Hide()
   s:SetScript('OnClick',function()setSeat(i)end)
   V.seats[i]=s
  end
@@ -684,6 +686,9 @@ function R.Refresh()
   if p then
    local st=status(p)
    s.name:SetText(string.sub(p.name or '?',1,16))
+   local action=R.HF19ActionFor and R.HF19ActionFor('DRAW',p.name,g.log,g.round)
+   if action then s.actionCover:Show();s.actionLabel:SetText(action);s.actionLabel:SetTextColor(R.HF19ActionColor(action));s.actionLabel:Show()
+   else s.actionCover:Hide();s.actionLabel:Hide() end
    local _,class=UnitClass(p.name or '')
    if p.name==UnitName('player') then _,class=UnitClass('player') end
    local portraitUnit=nil

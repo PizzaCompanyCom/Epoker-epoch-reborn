@@ -32,9 +32,36 @@ local function font(parent,x,y,w,text,style)
  f:SetPoint('TOPLEFT',parent,'TOPLEFT',x,y);f:SetWidth(w);f:SetJustifyH('LEFT');f:SetText(text or '')
  return f
 end
+local managementIcons={
+ ['Create Table']='Interface\\Icons\\INV_Misc_Key_03',
+ ['Join Table']='Interface\\Icons\\INV_Misc_GroupLooking',
+ ['Auto Seat Joined']='Interface\\Icons\\INV_Misc_GroupLooking',
+ ['Refresh']='Interface\\Icons\\INV_Misc_PocketWatch_01',
+ ['Lobby']='Interface\\Icons\\INV_Misc_Note_01',
+ ['Transfer GM']='Interface\\Icons\\INV_Misc_Head_Human_01',
+ ['Set Balance']='Interface\\Icons\\INV_Misc_Coin_01',
+ ['Sit Out']='Interface\\Icons\\Ability_Rogue_FeignDeath',
+ ['Sit In']='Interface\\Icons\\Ability_Warrior_RallyingCry',
+ ['Remove']='Interface\\Icons\\INV_Misc_Bone_01',
+ ['Turn Timer: 30s']='Interface\\Icons\\INV_Misc_PocketWatch_01',
+ ['Force Fold']='Interface\\Icons\\Ability_Rogue_FeignDeath',
+ ['Auto Seat']='Interface\\Icons\\INV_Misc_GroupLooking',
+}
 local function button(parent,text,x,y,w,callback)
  local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate')
  b:SetWidth(w);b:SetHeight(22);b:SetPoint('TOPLEFT',parent,'TOPLEFT',x,y);b:SetText(text);b:SetScript('OnClick',callback)
+ local path=managementIcons[text]
+ if not path then
+  if string.find(text,'Balance') or string.find(text,'Stack') then path='Interface\\Icons\\INV_Misc_Coin_01'
+  elseif string.find(text,'Timer') then path='Interface\\Icons\\INV_Misc_PocketWatch_01'
+  elseif string.find(text,'Fold') then path='Interface\\Icons\\Ability_Rogue_FeignDeath'
+  elseif string.find(text,'Seat') then path='Interface\\Icons\\INV_Misc_GroupLooking' end
+  if not path and text~='X' and text~='<' and text~='>' then path='Interface\\Icons\\INV_Misc_Note_01' end
+ end
+ if path and w>=78 then
+  local ico=b:CreateTexture(nil,'OVERLAY');ico:SetTexture(path);ico:SetSize(15,15);ico:SetPoint('LEFT',b,'LEFT',5,0)
+  local fs=b:GetFontString();if fs then fs:ClearAllPoints();fs:SetPoint('LEFT',b,'LEFT',22,0);fs:SetPoint('RIGHT',b,'RIGHT',-2,0);fs:SetJustifyH('CENTER');fs:SetFontObject('GameFontNormalSmall') end
+ end
  return b
 end
 local function input(x,y,w)
@@ -50,6 +77,11 @@ local function input(x,y,w)
 end
 function W.Refresh()
  if not frame then return end
+ if frame.hf19Create then
+  local exists=N.active or (next(N.discovered or {})~=nil)
+  if exists then frame.hf19Create:Disable() else frame.hf19Create:Enable() end
+  frame.hf19Status:SetText(N.active and ('Table: '..tostring(N.host or '-')..' [ACTIVE]') or (exists and 'Table already created in raid' or 'No active table'))
+ end
  head:SetText('Game Master: '..tostring(N.host or '-')..'   '..(gm() and '[HOST]' or '[READ ONLY]')..'   Hand '..tostring(H.handNumber or 0)..'   '..tostring(H.phase))
  for i=1,10 do
   local seatData=visibleSeats()[i]
@@ -91,7 +123,7 @@ function W.Refresh()
   if name then
    local state=N.members[name] and 'IN LOBBY' or 'IN RAID'
    row.label:SetText(name..'  |  '..(R.GetPokerPeerVersion(name) or '?')..'  |  '..state)
-   row.button:Show();if gm() and N.members[name] then row.button:Enable() else row.button:Disable() end
+   row.button:Show();if gm() and N.members[name] and R.PokerVersionMatches and R.PokerVersionMatches(name)==true then row.button:Enable() else row.button:Disable() end
   else row.label:SetText('');row.button:Hide() end
  end
 
@@ -124,7 +156,7 @@ end
 local function build()
  if frame then return end
  frame=CreateFrame('Frame','RaidPokerBarrensManagement',UIParent)
- frame:SetWidth(740);frame:SetHeight(640);frame:SetPoint('CENTER');frame:SetFrameStrata('FULLSCREEN_DIALOG')
+ frame:SetWidth(740);frame:SetHeight(710);frame:SetPoint('CENTER');frame:SetFrameStrata('FULLSCREEN_DIALOG')
  frame:SetMovable(true);frame:EnableMouse(true);frame:SetClampedToScreen(true);frame:RegisterForDrag('LeftButton')
  frame:SetScript('OnDragStart',function(self)self:StartMoving()end)
  frame:SetScript('OnDragStop',function(self)self:StopMovingOrSizing()end)
@@ -132,28 +164,42 @@ local function build()
  font(frame,20,-18,590,"THE BARRENS HOLD'EM - PLAYER MANAGEMENT",'GameFontNormalLarge')
  button(frame,'X',695,-16,28,function()frame:Hide()end)
  head=font(frame,20,-52,690,'')
- button(frame,'Auto Seat Joined',20,-78,135,function()local ok,err=M.AutoSeat();result(ok,err)end)
- button(frame,'Start Hand',165,-78,110,start)
- button(frame,'Refresh',285,-78,85,function()W.Refresh()end)
- button(frame,'Lobby',380,-78,80,function()if R.OpenBarrensNetworkLobby then R.OpenBarrensNetworkLobby()end end)
- button(frame,'Table 7.0',470,-78,90,function()if R.OpenBarrensTable then R.OpenBarrensTable() end end)
- font(frame,20,-115,315,'SEATS / VIRTUAL BALANCES','GameFontNormal')
+ local createBtn=button(frame,'Create Table',20,-78,145,function()
+  if N.CreateSingle then N.CreateSingle() end
+  W.Refresh()
+ end)
+ local tx=createBtn:GetNormalTexture();if tx then tx:SetVertexColor(.82,.22,.22) end
+ local joinBtn=button(frame,'Join Table',490,-78,120,function()
+  if N.JoinSingle then
+   local ok,why=N.JoinSingle()
+   if not ok and why~='No active table' and R.Print then R.Print(why or 'Unable to join table.') end
+  end
+  W.Refresh()
+ end)
+ local tableStatus=font(frame,180,-82,300,'No active table detected')
+ frame.hf19Create=createBtn;frame.hf19Join=joinBtn;frame.hf19Status=tableStatus
+
+ button(frame,'Auto Seat Joined',20,-112,135,function()local ok,err=M.AutoSeat();result(ok,err)end)
+ button(frame,'Refresh',165,-112,85,function()W.Refresh()end)
+ button(frame,'Lobby',260,-112,80,function()if R.OpenBarrensNetworkLobby then R.OpenBarrensNetworkLobby()end end)
+ button(frame,'Transfer GM',350,-112,120,function()if R.OpenBarrensGMTransfer then R.OpenBarrensGMTransfer() end end)
+ font(frame,20,-149,315,'SEATS / VIRTUAL BALANCES','GameFontNormal')
  local function rule(x,y,w,h,alpha)
   local t=frame:CreateTexture(nil,'ARTWORK');t:SetTexture('Interface\\Buttons\\WHITE8X8')
   t:SetVertexColor(.75,.59,.31,alpha or .3);t:SetPoint('TOPLEFT',frame,'TOPLEFT',x,y)
   t:SetWidth(w);t:SetHeight(h)
  end
- rule(20,-136,320,23,.22)
- font(frame,25,-141,28,'#')
- font(frame,51,-141,89,'PLAYER')
- font(frame,144,-141,63,'BALANCE')
- font(frame,215,-141,63,'STATUS')
- font(frame,281,-141,54,'VERSION')
- for _,x in ipairs({45,139,210,276,340}) do rule(x,-136,1,242,.24) end
- for i=0,10 do rule(20,-159-i*22,320,1,.35) end
+ rule(20,-170,320,23,.22)
+ font(frame,25,-175,28,'#')
+ font(frame,51,-175,89,'PLAYER')
+ font(frame,144,-175,63,'BALANCE')
+ font(frame,215,-175,63,'STATUS')
+ font(frame,281,-175,54,'VERSION')
+ for _,x in ipairs({45,139,210,276,340}) do rule(x,-170,1,242,.24) end
+ for i=0,10 do rule(20,-193-i*22,320,1,.35) end
  for i=1,10 do
   local idx=i
-  local y=-162-(i-1)*22
+  local y=-196-(i-1)*22
   if i%2==0 then
    local bg=frame:CreateTexture(nil,'BACKGROUND');bg:SetTexture('Interface\\Buttons\\WHITE8X8')
    bg:SetVertexColor(.9,.8,.5,.07);bg:SetPoint('TOPLEFT',frame,'TOPLEFT',21,y+2)
@@ -179,43 +225,43 @@ local function build()
   end)
   W.rows[i]=row
  end
- font(frame,355,-115,280,'GAME MASTER CONTROLS','GameFontNormal')
- detail=font(frame,355,-144,295,'')
- font(frame,355,-177,100,'Balance (s)')
- balanceInput=input(458,-175,85)
- button(frame,'Set',566,-175,65,function()
+ font(frame,355,-149,280,'GAME MASTER CONTROLS','GameFontNormal')
+ detail=font(frame,355,-178,295,'')
+ font(frame,355,-211,100,'Balance (s)')
+ balanceInput=input(458,-209,85)
+ button(frame,'Set',566,-209,65,function()
   perform(function(s)return M.SetStack(s.name,tonumber(balanceInput:GetText()))end)
  end)
- font(frame,355,-216,100,'Gold / Silver')
- goldInput=input(460,-214,44);goldInput:SetText('0')
- silverInput=input(522,-214,37);silverInput:SetText('0')
- button(frame,'Set G/S',566,-214,65,function()
+ font(frame,355,-250,100,'Gold / Silver')
+ goldInput=input(460,-248,44);goldInput:SetText('0')
+ silverInput=input(522,-248,37);silverInput:SetText('0')
+ button(frame,'Set G/S',566,-248,65,function()
   local g=tonumber(goldInput:GetText());local v=tonumber(silverInput:GetText())
   if not g or not v or g<0 or v<0 or g~=math.floor(g) or v~=math.floor(v) or v>=100 then result(false,'Enter Gold and Silver (0-99)');return end
   perform(function(seat)return M.SetStack(seat.name,g*100+v)end)
  end)
- button(frame,'Sit Out',355,-251,90,function()perform(function(s)return M.SitOut(s.name,true)end)end)
- button(frame,'Sit In',455,-251,80,function()perform(function(s)return M.SitOut(s.name,false)end)end)
- button(frame,'Remove',545,-251,80,function()perform(function(s)
+ button(frame,'Sit Out',355,-285,90,function()perform(function(s)return M.SitOut(s.name,true)end)end)
+ button(frame,'Sit In',455,-285,80,function()perform(function(s)return M.SitOut(s.name,false)end)end)
+ button(frame,'Remove',545,-285,80,function()perform(function(s)
   local name=s.name;local ok,err=M.Remove(name);if ok then W.selected=nil end;return ok,err
  end)end)
- font(frame,355,-290,135,'Default stack (s)')
- initialInput=input(485,-283,95);initialInput:SetText(tostring(M.initialStack or 1000))
- button(frame,'Apply',585,-283,60,function()
+ font(frame,355,-324,135,'Default stack (s)')
+ initialInput=input(485,-317,95);initialInput:SetText(tostring(M.initialStack or 1000))
+ button(frame,'Apply',585,-317,60,function()
   if not gm() or not idle() then result(false,'Game Master / idle hand required');return end
   local n=tonumber(initialInput:GetText())
   if not n or n<0 or n>100000000 or n~=math.floor(n) then result(false,'Invalid default stack');return end
   M.initialStack=n;log('DEFAULT STACK '..n..'s');W.Refresh()
  end)
- font(frame,355,-330,280,'HOST ACTION TEST (OWN TURN ONLY)','GameFontNormal')
- button(frame,'Fold',355,-356,63,function()action('FOLD')end)
- button(frame,'Check',424,-356,63,function()action('CHECK')end)
- button(frame,'Call',493,-356,63,function()action('CALL')end)
- button(frame,'All-In',562,-356,65,function()action('ALLIN')end)
- font(frame,355,-390,85,'Raise (s)')
- raiseInput=input(443,-383,75);raiseInput:SetText('10')
- button(frame,'Raise',535,-383,90,function()action('RAISE')end)
- button(frame,'Force Fold',535,-410,90,function()
+ font(frame,355,-364,280,'HOST ACTION TEST (OWN TURN ONLY)','GameFontNormal')
+ button(frame,'Fold',355,-390,63,function()action('FOLD')end)
+ button(frame,'Check',424,-390,63,function()action('CHECK')end)
+ button(frame,'Call',493,-390,63,function()action('CALL')end)
+ button(frame,'All-In',562,-390,65,function()action('ALLIN')end)
+ font(frame,355,-424,85,'Raise (s)')
+ raiseInput=input(443,-417,75);raiseInput:SetText('10')
+ button(frame,'Raise',535,-417,90,function()action('RAISE')end)
+ button(frame,'Force Fold',535,-444,90,function()
   if not gm() or not M.active then result(false,'Active host hand required');return end
   local player=H.players[H.actionSeat or 0]
   if not player then result(false,'No active player');return end
@@ -223,29 +269,29 @@ local function build()
   if ok then log('GM FORCE FOLD '..tostring(player.name)) end
   result(ok,err)
  end)
- font(frame,355,-430,290,'ADMIN HISTORY (CURRENT SESSION)','GameFontNormal')
- logText=font(frame,355,-453,295,'')
- font(frame,20,-394,315,'RAID PLAYERS AVAILABLE','GameFontNormal')
- font(frame,20,-413,310,'Addon detected | Not seated')
+ font(frame,355,-464,290,'ADMIN HISTORY (CURRENT SESSION)','GameFontNormal')
+ logText=font(frame,355,-487,295,'')
+ font(frame,20,-428,315,'RAID PLAYERS AVAILABLE','GameFontNormal')
+ font(frame,20,-447,310,'Addon detected | Not seated')
  for i=1,4 do
   local row={}
-  row.label=font(frame,20,-430-(i-1)*20,230,'')
-  row.button=button(frame,'Seat',260,-425-(i-1)*20,70,function()
+  row.label=font(frame,20,-464-(i-1)*20,230,'')
+  row.button=button(frame,'Seat',260,-459-(i-1)*20,70,function()
    if row.name then local ok,err=M.Assign(row.name);result(ok,err) end
   end)
   availableRows[i]=row
  end
- button(frame,'<',20,-511,32,function()availablePage=math.max(0,availablePage-1);W.Refresh()end)
- button(frame,'>',58,-511,32,function()availablePage=availablePage+1;W.Refresh()end)
- font(frame,100,-515,225,'Only joined players can be seated')
+ button(frame,'<',20,-545,32,function()availablePage=math.max(0,availablePage-1);W.Refresh()end)
+ button(frame,'>',58,-545,32,function()availablePage=availablePage+1;W.Refresh()end)
+ font(frame,100,-549,225,'Only joined players can be seated')
 
- font(frame,355,-520,330,'TURN TIMER - GAME MASTER','GameFontNormal')
- local timerButton=button(frame,'Turn Timer: 30s',355,-545,178,function()
+ font(frame,355,-554,330,'TURN TIMER - GAME MASTER','GameFontNormal')
+ local timerButton=button(frame,'Turn Timer: 30s',355,-579,178,function()
   if R.CycleBarrensTurnTimer then R.CycleBarrensTurnTimer() end
   if R.RefreshBarrensTimerSetting then R.RefreshBarrensTimerSetting() end
  end)
  frame.barrensTurnTimerButton=timerButton
- font(frame,355,-575,310,'15s / 30s / 60s / OFF')
+ font(frame,355,-609,310,'15s / 30s / 60s / OFF')
  if R.RefreshBarrensTimerSetting then R.RefreshBarrensTimerSetting() end
  frame:Hide()
 end

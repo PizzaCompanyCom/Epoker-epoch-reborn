@@ -296,6 +296,13 @@ local function startHand()
  if not host() then return end
  if G.phase~='LOBBY' and G.phase~='SHOWDOWN' and G.phase~='IDLE' then return end
  if #G.players<2 then say('At least two players must join.');return end
+ if not G.solo and R.PokerVersionMatches then
+  for _,p in ipairs(G.players) do
+   if p.balance>0 and p.status~='Sitting Out' and p.status~='Busted' and R.PokerVersionMatches(p.name)~=true then
+    say('Cannot start: incompatible or unknown addon version: '..p.name);return
+   end
+  end
+ end
  G.showdownHands=nil;G.round=G.round+1;G.phase='BET1';G.pot=0;G.bet=0;G.winner='';G.deck=shuffle();G.deckPos=1;G.hand={};G.selected={}
  for _,p in ipairs(G.players) do
   p.inhand=p.balance>0 and p.status~='Sitting Out' and p.status~='Busted';p.fold=false;p.allin=false;p.done=false;p.paid=0;p.total=0;p.cards={}
@@ -373,7 +380,11 @@ function R.JoinNamedTable(id)
  if t.count>=10 or t.phase~='LOBBY' then say('Table is full or a hand is in progress.');return end
  if G.solo and R.SoloStop then R.SoloStop() end
  activeID=id;tableName=t.name;G.host=t.gm;G.phase='LOBBY';G.players={}
- send('JOIN','',t.gm)
+ if R.PokerVersionMatches and R.PokerVersionMatches(t.gm)==false then
+  if R.PokerShowVersionWarning then R.PokerShowVersionWarning(t.gm,R.GetPokerPeerVersion(t.gm)) end
+  activeID='';tableName='';return
+ end
+ send('JOIN',(R.PokerLocalVersion and R.PokerLocalVersion() or 'Unknown')..';'..tostring(R.PokerNetworkProtocol or '0'),t.gm)
  send('SYNC','',t.gm)
  R.Refresh();say('Joining '..t.name..'...')
 end
@@ -462,7 +473,27 @@ local function receive(prefix,msg,channel,sender)
   end
   return
  end
- if k=='JOIN' then if host() then join(sender) end;return end
+ if k=='JOIN' then
+  if host() then
+   local ver,proto=d:match('^([%w%._%-]+);(%d+)$')
+   if not ver or proto~=tostring(R.PokerNetworkProtocol or '20') or ver~=(R.PokerLocalVersion and R.PokerLocalVersion() or '') then
+    send('VERSION_REJECT',(R.PokerLocalVersion and R.PokerLocalVersion() or 'Unknown')..';'..tostring(R.PokerNetworkProtocol or '20'),sender)
+    say('Rejected incompatible player: '..sender)
+   else
+    if R.PokerRecordPeerVersion then R.PokerRecordPeerVersion(sender,ver,proto) end
+    join(sender)
+   end
+  end
+  return
+ end
+ if k=='VERSION_REJECT' then
+  if sender==G.host then
+   local required=d:match('^([^;]+)') or 'Unknown'
+   if R.PokerShowVersionWarning then R.PokerShowVersionWarning(sender,required) end
+   resetTable()
+  end
+  return
+ end
  if k=='ACT' then if host() then local a=split(d,';');hostAction(sender,a[1],a[2]) end;return end
  if k=='SYNC' then if host() then send('HOST',tableName,sender);broadcast();local p=player(sender);if p then sendHand(p) end end;return end
  if k=='SET' then if host() then local a=split(d,';');adjustBalance(sender,a[1]) end;return end
@@ -499,7 +530,7 @@ local function input(parent,x,y,w,default)
  return e
 end
 local function button(parent,label,x,y,w,fn)
- return R.Button(parent,label,w or 90,(parent==R.Main and (label=='Tables' or label=='Leave Table' or label=='Start Hand' or label=='History' or label=='Leader' or label=='Check' or label=='Call' or label=='Raise' or label=='Fold' or label=='All-In' or label=='Exchange' or label=='Stand Pat' or label=='Poker Table') and 32 or 24),x,y,fn)
+ return R.Button(parent,label,w or 90,(parent==R.Main and (label=='Tables' or label=='Join Table' or label=='Leave Table' or label=='Start Hand' or label=='History' or label=='Leader' or label=='Check' or label=='Call' or label=='Raise' or label=='Fold' or label=='All-In' or label=='Exchange' or label=='Stand Pat' or label=='Poker Table') and 32 or 24),x,y,fn)
 end
 local function panel(parent,x,y,w,h)
  local f=CreateFrame('Frame',nil,parent);f:SetPoint('TOPLEFT',parent,'TOPLEFT',x,y);f:SetWidth(w);f:SetHeight(h)
@@ -585,10 +616,16 @@ function R.BuildGame(main)
   cell:SetTextColor(unpack(spec[3]));ui.moneyCells[i]=cell
  end
  ui.timer=text(main,600,-354,150,'GameFontNormal')
- button(main,'Tables',24,-375,135,function()if R.ToggleTableBrowser then R.ToggleTableBrowser() end end)
+ button(main,'Join Table',24,-375,135,function()
+  if R.ActiveTableID()~='' then R.Print('Already connected to a table.');return end
+  local list=R.GetTableDirectory()
+  if #list==1 then R.JoinNamedTable(list[1].id)
+  elseif #list==0 then R.DiscoverTables();R.HF19LastMode='DRAW';if StaticPopup_Show then StaticPopup_Show('EPOKER_NO_ACTIVE_TABLE') end
+  else R.Print('Multiple legacy tables detected. Open Player Management to choose.') end
+ end)
  button(main,'Leave Table',168,-375,135,function()R.LeaveNamedTable()end)
  button(main,'Start Hand',312,-375,135,function()startHand()end)
- button(main,'History',456,-375,135,function()ui.history:Show()end)
+ button(main,'History',456,-375,135,function()if ui.history:IsShown() then ui.history:Hide() else ui.history:Show() end end)
  button(main,'Leader',600,-375,135,function()if ui.leader:IsShown() then ui.leader:Hide() else ui.leader:Show() end end)
  ui.checkButton=button(main,'Check',24,-416,100,function()request('ACT','CHECK;0')end)
  ui.callButton=button(main,'Call',128,-416,100,function()request('ACT','CALL;0')end)
@@ -656,23 +693,8 @@ function R.BuildGame(main)
  gmDrag:SetScript('OnDragStop',function()leaderFrame:StopMovingOrSizing()end)
  ui.leader=leaderFrame
  local lt=text(leaderFrame,20,-22,330,'GameFontNormalLarge');lt:SetText('Game Master Controls')
- button(leaderFrame,'X',373,-18,28,function()leaderFrame:Hide()end)
- button(leaderFrame,'Force Showdown',20,-62,170,function()if host() and (G.phase=='BET1' or G.phase=='BET2' or G.phase=='DRAW') then finishHand('forced')end end)
- button(leaderFrame,'Cancel Hand',205,-62,170,function()cancelHand()end)
- button(leaderFrame,'Announce Winner',20,-98,170,function()
-  if not host() or G.winner=='' then return end
-  if G.solo then say('Debug winner: '..G.winner);return end
-  SendChatMessage(string.sub('[Raid Poker] '..string.gsub(G.winner,'[|;]',' - '),1,220),'RAID')
- end)
- button(leaderFrame,'Announce Balances',205,-98,170,function()
-  if not host() then return end
-  for _,p in ipairs(G.players) do if G.solo then say(p.name..': '..R.Money(p.balance)) else SendChatMessage('[Raid Poker] '..p.name..': '..R.Money(p.balance),'RAID') end end
- end)
- local note=text(leaderFrame,20,-148,385,'GameFontHighlightSmall');note:SetText('Balances and player status: open Player Management.')
- button(leaderFrame,'Player Management',20,-179,175,function()if R.TogglePlayerManagement then R.TogglePlayerManagement() end end)
- button(leaderFrame,'Timer: 15s',205,-179,82,function()if host() then G.timer=15;broadcast()end end)
- button(leaderFrame,'30s',295,-179,52,function()if host() then G.timer=30;broadcast()end end)
- button(leaderFrame,'60s',350,-179,52,function()if host() then G.timer=60;broadcast()end end)
+ button(leaderFrame,'X',493,-18,28,function()leaderFrame:Hide()end)
+ -- GM controls are built in Management.lua to avoid duplicate actions.
  leaderFrame:Hide()
 end
 function R.Refresh()
@@ -822,16 +844,26 @@ function R.RequestSync() if not G.solo then send('SYNC','');say('State synchroni
 function R.SetManagedBalance(name,value) adjustBalance(name,value) end
 function R.IsPokerHost() return host() end
 function R.CancelManagedHand() cancelHand() end
+function R.BroadcastManagedState() if host() then broadcast() end end
 function R.AnnounceManaged(kind,channel)
  if not host() then say('Game Master only.');return end
- if channel~='RAID' and channel~='SAY' then return end
+ channel=channel or 'SAY'
+ if channel~='RAID' and channel~='SAY' and channel~='YELL' and channel~='GUILD' and channel~='EPOKER' then return end
  local lines={}
- if kind=='WINNER' then if G.winner=='' then return end;lines[1]='Winner: '..G.winner..' | Pot: '..R.Money(G.lastPot or G.pot)
+ if kind=='WINNER' then if G.winner=='' then say('No winner to announce.');return end;lines[1]='Winner: '..G.winner..' | Pot: '..R.Money(G.lastPot or G.pot)
  elseif kind=='BALANCES' then for _,p in ipairs(G.players) do table.insert(lines,p.name..': '..R.Money(p.balance)) end
  elseif kind=='TABLE' then lines[1]='Table: '..#G.players..' players | '..G.phase..' | Pot: '..R.Money(G.pot) end
- for _,s in ipairs(lines) do
-  local clean=string.gsub(s,'|',' - ');clean=string.gsub(clean,'[%c]',' ')
-  if G.solo then say(clean) else if channel=='RAID' and not raid() then say('Join a raid to announce.');return end;SendChatMessage(string.sub('[Raid Poker] '..clean,1,220),channel) end
+ if G.solo then for _,line in ipairs(lines) do say(string.gsub(line,'|',' - ')) end;return end
+ local channelId=nil
+ if channel=='EPOKER' then
+  channelId=GetChannelName and GetChannelName('Epoker') or 0
+  if not channelId or channelId==0 then say('Join /Epoker before announcing.');return end
+  channel='CHANNEL'
+ elseif channel=='RAID' and not raid() then say('Join a raid to announce.');return
+ elseif channel=='GUILD' and not IsInGuild() then say('Join a guild to announce.');return end
+ for _,line in ipairs(lines) do
+  local clean=string.gsub(string.gsub(line,'|',' - '),'[%c]',' ')
+  SendChatMessage(string.sub('[Raid Poker] '..clean,1,220),channel,nil,channelId)
  end
 end
 function R.ResendManagedWinner() if not host() or G.winner=='' then return end;broadcast();send('RESULT',G.winner) end

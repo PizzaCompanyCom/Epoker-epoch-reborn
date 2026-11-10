@@ -5,6 +5,8 @@ if not R then return end
 local N={active=false,owner=false,host=nil,session=nil,members={},discovered={},discoveredInfo={}}
 R.HoldemNetwork=N
 local PREFIX='RPBH4A'
+local function localVersion() return R.PokerLocalVersion and R.PokerLocalVersion() or 'Unknown' end
+local function protocol() return tostring(R.PokerNetworkProtocol or '20') end
 local window,status,listing
 local tableButtons={}
 local function me() return UnitName('player') or '' end
@@ -74,14 +76,20 @@ end
 function R.BarrensNetworkLeave() leave() end
 local function create()
  if not raid() then R.Print('Barrens Network: Join a raid first.');return end
+ if N.active then R.Print('Already connected to a table.');return end
+ for name in pairs(N.discovered) do if isRaidMember(name) then R.Print('An active Holdem table exists. Use Join Table.');return end end
  leave()
  N.active=true;N.owner=true;N.host=me();N.session=safe(me())..tostring(math.floor(GetTime()*1000)%10000000)
  N.members={[me()]=true}
  if R.HoldemUnified then R.HoldemUnified.SetMode('NETWORK') end
  if R.HoldemSync then R.HoldemSync.remote=nil;R.HoldemSync.pending=nil;R.HoldemSync.received=0 end
- announce('O|'..N.session..'|'..safe(me()))
+ announce('O|'..N.session..'|'..safe(me())..'|'..localVersion()..'|'..protocol())
  announce(tableInfo())
  refresh()
+end
+function N.Discover()
+ if not raid() then return end
+ announce('D|'..safe(me()))
 end
 local function discover()
  if not raid() then R.Print('Barrens Network: Join a raid first.');return end
@@ -95,11 +103,38 @@ local function join()
  if N.selectedHost and N.discovered[N.selectedHost] then host=N.selectedHost;session=N.discovered[host] end
  if not host then for name,id in pairs(N.discovered) do host=name;session=id;break end end
  if not host or not isRaidMember(host) then R.Print('Barrens Network: No table found. Press Refresh.');return end
+ local info=N.discoveredInfo[host] or {}
+ if info.version~=localVersion() or info.protocol~=protocol() then
+  if R.PokerShowVersionWarning then R.PokerShowVersionWarning(host,info.version or 'Unknown') end
+  return
+ end
  N.active=true;N.owner=false;N.host=host;N.session=session;N.members={[host]=true,[me()]=true}
  if R.HoldemUnified then R.HoldemUnified.SetMode('NETWORK') end
  if R.HoldemSync then R.HoldemSync.remote=nil;R.HoldemSync.pending=nil;R.HoldemSync.received=0 end
- announce('J|'..session..'|'..safe(me()))
+ announce('J|'..session..'|'..safe(me())..'|'..localVersion()..'|'..protocol())
+ if R.HoldemSync and R.HoldemSync.Request then R.HoldemSync.Request() end
  refresh()
+end
+function N.CreateSingle() create() end
+function N.JoinSingle()
+ if N.active then
+  if R.HoldemUnified then R.HoldemUnified.SetMode('NETWORK') end
+  if R.OpenBarrensTable then R.OpenBarrensTable() end
+  return true
+ end
+ local count=0
+ for name in pairs(N.discovered) do if isRaidMember(name) then count=count+1 end end
+ if count==0 then
+  N.pendingJoinAt=nil
+  N.Discover()
+  R.HF19LastMode='HOLDEM'
+  if StaticPopup_Show then StaticPopup_Show('EPOKER_NO_ACTIVE_TABLE') end
+  return false,'No active table'
+ end
+ if count>1 then return false,'Multiple legacy tables detected. Select one in the Network Lobby.' end
+ join()
+ if N.active and R.OpenBarrensTable then R.OpenBarrensTable() end
+ return N.active
 end
 local function button(text,x,y,w,fn)
  local b=CreateFrame('Button',nil,window,'UIPanelButtonTemplate')
@@ -155,30 +190,48 @@ ev:SetScript('OnEvent',function(self,event,...)
  end
  if event=='RAID_ROSTER_UPDATE' then
   if N.active and (not raid() or (not N.owner and not isRaidMember(N.host))) then leave() end
+  if raid() then N.Discover() end
   return
  end
  local prefix,msg,channel,sender=...
  if prefix~=PREFIX or channel~='RAID' or type(msg)~='string' or #msg>160 then return end
  if not isRaidMember(sender) or sender==me() then return end
- local kind,session,who=msg:match('^([A-Z])|([^|]+)|([^|]+)$')
+ local kind,session,who,remoteVersion,remoteProtocol=msg:match('^([A-Z])|([^|]+)|([^|]+)|([%w%._%-]+)|(%d+)$')
+ if not kind then kind,session,who=msg:match('^([A-Z])|([^|]+)|([^|]+)$') end
  if not kind then
   if msg:match('^T|') and not N.active then
    local id,owner,count,phase=msg:match('^T|([^|]+)|([^|]+)|(%d+)|([A-Z]+)$')
-   if owner==sender and N.discovered[sender]==id then N.discoveredInfo[sender]={count=tonumber(count),phase=phase} end
+   if owner==sender and N.discovered[sender]==id then
+    local previous=N.discoveredInfo[sender] or {}
+    N.discoveredInfo[sender]={count=tonumber(count),phase=phase,version=previous.version,protocol=previous.protocol}
+   end
   end
-  if msg:match('^D|') and N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me()));announce(tableInfo()) end
+  if msg:match('^D|') and N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me())..'|'..localVersion()..'|'..protocol());announce(tableInfo()) end
   return
  end
  if kind=='D' then
-  if N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me()));announce(tableInfo()) end
+  if N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me())..'|'..localVersion()..'|'..protocol());announce(tableInfo()) end
  elseif kind=='O' and who==sender and not N.active then
   N.discovered[sender]=session
+  N.discoveredInfo[sender]=N.discoveredInfo[sender] or {}
+  N.discoveredInfo[sender].version=remoteVersion or 'Unknown'
+  N.discoveredInfo[sender].protocol=remoteProtocol or 'legacy'
+  if N.pendingJoinAt and not N.active then N.pendingJoinAt=nil;N.selectedHost=sender;join() end
  elseif kind=='J' and who==sender and N.active and N.owner and session==N.session then
+  if remoteVersion~=localVersion() or remoteProtocol~=protocol() then
+   announce('X|'..safe(N.session)..'|'..safe(sender)..'|'..localVersion()..'|'..protocol())
+   R.Print('Rejected incompatible player: '..sender)
+   return
+  end
+  if R.PokerRecordPeerVersion then R.PokerRecordPeerVersion(sender,remoteVersion,remoteProtocol) end
   N.members[sender]=true
   if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
   -- Send existing lobby membership to the newcomer as well.
   for member in pairs(N.members) do announce('M|'..safe(N.session)..'|'..safe(member)) end
   announce('M|'..safe(N.session)..'|'..safe(sender))
+ elseif kind=='X' and N.active and not N.owner and sender==N.host and who==me() and session==N.session then
+  if R.PokerShowVersionWarning then R.PokerShowVersionWarning(sender,remoteVersion or 'Unknown') end
+  leave()
  elseif kind=='M' and N.active and not N.owner and sender==N.host and session==N.session then
   N.members[who]=true
  elseif kind=='L' and N.active and session==N.session and who==sender then
@@ -188,4 +241,20 @@ ev:SetScript('OnEvent',function(self,event,...)
   end
  end
  refresh()
+end)
+
+-- Wait briefly for the raid discovery response before showing the no-table dialog.
+local pendingTicker=CreateFrame('Frame')
+local pendingElapsed=0
+pendingTicker:SetScript('OnUpdate',function(self,dt)
+ pendingElapsed=pendingElapsed+dt
+ if pendingElapsed<.25 then return end
+ pendingElapsed=0
+ if N.pendingJoinAt and GetTime()>=N.pendingJoinAt then
+  N.pendingJoinAt=nil
+  if not N.active then
+   R.HF19LastMode='HOLDEM'
+   if StaticPopup_Show then StaticPopup_Show('EPOKER_NO_ACTIVE_TABLE') end
+  end
+ end
 end)

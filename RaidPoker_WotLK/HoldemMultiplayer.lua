@@ -49,6 +49,7 @@ function M.Assign(name)
  if not host() then return false,'Game Master only' end
  if not waiting() then return false,'Finish the hand first' end
  if not eligible(name) then return false,'Player must join lobby and raid' end
+ if R.PokerVersionMatches and R.PokerVersionMatches(name)~=true then return false,'Incompatible or unknown addon version: '..name end
  for i,s in ipairs(M.seats) do if s.name==name then return true end end
  if #M.seats>=10 then return false,'Table full (10 seats)' end
  M.seats[#M.seats+1]={name=name,stack=M.initialStack,sittingOut=false}
@@ -91,7 +92,7 @@ function M.StartHand()
   for _,seat in ipairs(M.seats) do
    if not seat.sittingOut and seat.stack>0 and eligible(seat.name) then
     local match=R.PokerVersionMatches(seat.name)
-    if match==false then return false,'Addon version mismatch: '..seat.name end
+    if match~=true then return false,'Incompatible or unknown addon version: '..seat.name end
    end
   end
  end
