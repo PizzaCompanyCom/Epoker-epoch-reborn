@@ -2,10 +2,11 @@
 -- WoW 3.3.5a / Lua 5.1. Lobby only; no automatic multiplayer dealing.
 local R=RPoker
 if not R then return end
-local N={active=false,owner=false,host=nil,session=nil,members={},discovered={}}
+local N={active=false,owner=false,host=nil,session=nil,members={},discovered={},discoveredInfo={}}
 R.HoldemNetwork=N
 local PREFIX='RPBH4A'
 local window,status,listing
+local tableButtons={}
 local function me() return UnitName('player') or '' end
 local function raid()
  return GetNumRaidMembers and GetNumRaidMembers()>0
@@ -22,6 +23,13 @@ local function safe(s) return tostring(s or ''):gsub('[|,;\r\n]',''):sub(1,30) e
 local function announce(msg)
  if raid() and SendAddonMessage then SendAddonMessage(PREFIX,msg,'RAID') end
 end
+local function tableInfo()
+ local M=R.HoldemMultiplayer
+ local count=M and #M.seats or 0
+ local phase=(R.Holdem and R.Holdem.phase) or 'LOBBY'
+ return 'T|'..safe(N.session)..'|'..safe(me())..'|'..tostring(count)..'|'..safe(phase)
+end
+function N.BroadcastTableInfo() if N.owner and N.active then announce(tableInfo()) end end
 local function refresh()
  if not window then return end
  status:SetText('Status: '..(N.active and (N.owner and 'GAME MASTER' or 'JOINED') or 'OFFLINE')..'  Host: '..(N.host or '-'))
@@ -30,13 +38,37 @@ local function refresh()
   lines[#lines+1]='Session: '..(N.session or '-')
   for name in pairs(N.members) do lines[#lines+1]='Member: '..safe(name) end
  else
-  for name in pairs(N.discovered) do lines[#lines+1]='Available table: '..safe(name) end
+  for name,id in pairs(N.discovered) do
+   local info=N.discoveredInfo[name] or {}
+   local status=(info.phase=='LOBBY' and (info.count or 0)<10) and 'OPEN' or (info.count or 0)>=10 and 'FULL' or 'IN GAME'
+   lines[#lines+1]='|cff32ff76[ '..status..' TABLE ]|r  '..safe(name)..'  |  GM: '..safe(name)..'  |  '..tostring(info.count or '?')..'/10'
+  end
  end
- listing:SetText(#lines>0 and table.concat(lines,'\n') or 'No discovered tables. Use Refresh while in a raid.')
+ if not N.active then
+  listing:SetText('Select a highlighted table below to join. Refresh to discover tables.')
+ else listing:SetText(#lines>0 and table.concat(lines,'\n') or 'No players connected.') end
+ local names={}
+ for name in pairs(N.discovered) do names[#names+1]=name end
+ table.sort(names)
+ for i,b in ipairs(tableButtons) do
+  local name=not N.active and names[i] or nil
+  if name then
+   local info=N.discoveredInfo[name] or {}
+   local status=(info.phase=='LOBBY' and (info.count or 0)<10) and 'OPEN' or (info.count or 0)>=10 and 'FULL' or 'IN GAME'
+   b.host=name
+   b:SetText('[ '..status..' ]   '..safe(name)..'   |   '..tostring(info.count or '?')..'/10 seats')
+   b:Show()
+   if status=='OPEN' then b:Enable() else b:Disable() end
+  else b:Hide();b.host=nil end
+ end
 end
 local function leave()
  if N.active then announce('L|'..safe(N.session)..'|'..safe(me())) end
  N.active=false;N.owner=false;N.host=nil;N.session=nil;N.members={}
+ if R.HoldemMultiplayer then R.HoldemMultiplayer.active=false;R.HoldemMultiplayer.seats={} end
+ if R.HoldemProtocol then R.HoldemProtocol.privateCards={};R.HoldemProtocol.privateHand=nil end
+ if R.HoldemUnified then R.HoldemUnified.mode='SOLO' end
+ if R.BarrensCloseSoloGame then R.BarrensCloseSoloGame() end
  refresh()
 end
 function R.BarrensNetworkLeave() leave() end
@@ -45,21 +77,27 @@ local function create()
  leave()
  N.active=true;N.owner=true;N.host=me();N.session=safe(me())..tostring(math.floor(GetTime()*1000)%10000000)
  N.members={[me()]=true}
+ if R.HoldemUnified then R.HoldemUnified.SetMode('NETWORK') end
+ if R.HoldemSync then R.HoldemSync.remote=nil;R.HoldemSync.pending=nil;R.HoldemSync.received=0 end
  announce('O|'..N.session..'|'..safe(me()))
+ announce(tableInfo())
  refresh()
 end
 local function discover()
  if not raid() then R.Print('Barrens Network: Join a raid first.');return end
- N.discovered={}
+ N.discovered={};N.discoveredInfo={}
  announce('D|'..safe(me()))
  refresh()
 end
 local function join()
  if N.active then return end
  local host,session
- for name,id in pairs(N.discovered) do host=name;session=id;break end
+ if N.selectedHost and N.discovered[N.selectedHost] then host=N.selectedHost;session=N.discovered[host] end
+ if not host then for name,id in pairs(N.discovered) do host=name;session=id;break end end
  if not host or not isRaidMember(host) then R.Print('Barrens Network: No table found. Press Refresh.');return end
  N.active=true;N.owner=false;N.host=host;N.session=session;N.members={[host]=true,[me()]=true}
+ if R.HoldemUnified then R.HoldemUnified.SetMode('NETWORK') end
+ if R.HoldemSync then R.HoldemSync.remote=nil;R.HoldemSync.pending=nil;R.HoldemSync.received=0 end
  announce('J|'..session..'|'..safe(me()))
  refresh()
 end
@@ -72,7 +110,7 @@ end
 local function build()
  if window then return end
  window=CreateFrame('Frame','RaidPokerBarrensNetworkLobby',UIParent)
- window:SetWidth(480);window:SetHeight(360);window:SetPoint('CENTER')
+ window:SetWidth(480);window:SetHeight(420);window:SetPoint('CENTER')
  window:SetFrameStrata('DIALOG');window:SetMovable(true);window:EnableMouse(true)
  window:RegisterForDrag('LeftButton');window:SetClampedToScreen(true)
  window:SetScript('OnDragStart',function(self) self:StartMoving() end)
@@ -88,6 +126,14 @@ local function build()
  button('Refresh',132,-90,90,discover)
  button('Join First Found Table',230,-90,162,join)
  button('Leave',400,-90,62,leave)
+ for i=1,4 do
+  local b=button('',20,-166-(i-1)*39,440,function(self)
+   N.selectedHost=self.host
+   join()
+  end)
+  local tex=b:GetNormalTexture();if tex then tex:SetVertexColor(.30,.95,.40,1) end
+  tableButtons[i]=b
+ end
  button('X',434,-14,26,function()window:Hide()end)
  window:Hide()
 end
@@ -116,20 +162,30 @@ ev:SetScript('OnEvent',function(self,event,...)
  if not isRaidMember(sender) or sender==me() then return end
  local kind,session,who=msg:match('^([A-Z])|([^|]+)|([^|]+)$')
  if not kind then
-  if msg:match('^D|') and N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me())) end
+  if msg:match('^T|') and not N.active then
+   local id,owner,count,phase=msg:match('^T|([^|]+)|([^|]+)|(%d+)|([A-Z]+)$')
+   if owner==sender and N.discovered[sender]==id then N.discoveredInfo[sender]={count=tonumber(count),phase=phase} end
+  end
+  if msg:match('^D|') and N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me()));announce(tableInfo()) end
   return
  end
  if kind=='D' then
-  if N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me())) end
+  if N.active and N.owner then announce('O|'..safe(N.session)..'|'..safe(me()));announce(tableInfo()) end
  elseif kind=='O' and who==sender and not N.active then
   N.discovered[sender]=session
  elseif kind=='J' and who==sender and N.active and N.owner and session==N.session then
   N.members[sender]=true
+  if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
+  -- Send existing lobby membership to the newcomer as well.
+  for member in pairs(N.members) do announce('M|'..safe(N.session)..'|'..safe(member)) end
   announce('M|'..safe(N.session)..'|'..safe(sender))
  elseif kind=='M' and N.active and not N.owner and sender==N.host and session==N.session then
   N.members[who]=true
  elseif kind=='L' and N.active and session==N.session and who==sender then
-  if sender==N.host then leave() else N.members[sender]=nil end
+  if sender==N.host then leave() else
+   N.members[sender]=nil
+   if N.owner and R.HoldemMultiplayer and R.HoldemMultiplayer.Remove then R.HoldemMultiplayer.Remove(sender) end
+  end
  end
  refresh()
 end)

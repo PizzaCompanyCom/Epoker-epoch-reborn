@@ -4,6 +4,7 @@ local R=RPoker
 if not R or not R.Holdem then return end
 local H=R.Holdem
 local U={mode='SOLO'}
+-- Network mode is selected automatically by the lobby. Preview bots are never network seats.
 R.HoldemUnified=U
 local function network() return R.HoldemNetwork end
 local function host() local n=network();return n and n.active and n.owner and n.host==UnitName('player') end
@@ -12,7 +13,15 @@ R.BarrensUnifiedMode=mode
 function U.SetMode(m)
  m=string.upper(tostring(m or ''))
  if m~='SOLO' and m~='NETWORK' then return false,'Use SOLO or NETWORK' end
- if H.phase~='LOBBY' and H.phase~='SHOWDOWN' then return false,'Finish the active hand before changing mode' end
+ if m=='SOLO' and H.phase~='LOBBY' and H.phase~='SHOWDOWN' then return false,'Finish the active hand before changing mode' end
+ if m=='NETWORK' and U.mode~='NETWORK' then
+  if R.HoldemSoloDebug then R.HoldemSoloDebug.auto=false end
+  -- Do not leave preview bots or an unfinished solo hand in the network engine.
+  H.phase='LOBBY';H.players={};H.board={};H.deck={};H.pot=0;H.actionSeat=nil
+  H.winners={};H.sidePots={};H.handNumber=0;H.log={}
+  if R.HoldemMultiplayer then R.HoldemMultiplayer.active=false;R.HoldemMultiplayer.seats={} end
+  if R.HoldemProtocol then R.HoldemProtocol.privateCards={};R.HoldemProtocol.privateHand=nil end
+ end
  U.mode=m
  if R.Print then R.Print('Barrens Table 7.0 mode: '..m) end
  U.Refresh()
@@ -24,7 +33,7 @@ function R.BarrensUnifiedSnapshot()
  if not n or not n.active then return {handNumber=0,phase='LOBBY',players={},board={},pot=0,winners={},log={}} end
  if host() then
   local m=R.HoldemMultiplayer
-  if m and m.active then return H.GetPublicSnapshot() end
+  if m and (m.active or #m.seats>0) then return H.GetPublicSnapshot() end
   return {handNumber=0,phase='LOBBY',players={},board={},pot=0,winners={},log={}}
  end
  local s=R.HoldemSync and R.HoldemSync.remote
@@ -71,6 +80,14 @@ function R.BarrensUnifiedReset()
  if mode()=='SOLO' then H.ResetPreview() else
   if R.Print then R.Print('Network hand reset is not available; use Game Master controls.') end
  end
+end
+function R.BarrensCloseSoloGame()
+ if mode()~='SOLO' then return false,'Leave the multiplayer table before closing Solo Debug' end
+ if R.HoldemSoloDebug then R.HoldemSoloDebug.auto=false end
+ H.phase='LOBBY';H.players={};H.board={};H.deck={};H.pot=0;H.actionSeat=nil
+ H.handNumber=0;H.deck={};H.winners={};H.sidePots={};H.log={}
+ U.Refresh()
+ return true
 end
 function U.Refresh()
  if R.RefreshBarrensUnifiedTable then R.RefreshBarrensUnifiedTable() end

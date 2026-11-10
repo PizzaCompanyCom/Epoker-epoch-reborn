@@ -27,6 +27,7 @@ local function update()
  info:SetText('Phase: '..(H.phase or 'LOBBY')..'  |  Acting: '..(actor and actor.name or 'none')..'\nOnly local simulated stacks. No network or raid required.')
 end
 local function reset()
+ if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then say('Leave the network table to play Solo Debug.');return end
  D.auto=false;H.debugBots=D.bots;H.ResetPreview();update()
 end
 local function choose(n)
@@ -34,12 +35,14 @@ local function choose(n)
  D.bots=n;reset()
 end
 local function act(a,amount)
+ if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then say('Solo Debug is unavailable during multiplayer.');return end
  if H.phase=='LOBBY' or H.phase=='SHOWDOWN' then say('Start a hand first.');return end
  local ok,msg=H.Action(a,amount)
  if not ok then say(msg or 'Action unavailable.') end
  update()
 end
 local function botStep()
+ if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then return end
  local i=H.actionSeat
  if not i or i==1 or H.phase=='SHOWDOWN' or H.phase=='LOBBY' then return end
  local p=H.players[i];if not p then return end
@@ -64,6 +67,7 @@ local function build()
  botLabel=label(win,20,-57,385,'')
  for j,n in ipairs({1,3,5,9}) do button(win,n..' Bot'..(n>1 and 's' or ''),20+(j-1)*99,-78,92,function()choose(n)end) end
  button(win,'Start Hand',20,-117,120,function()
+  if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then say('Leave multiplayer first.');return end
   local ok,msg=H.StartPreviewHand();if not ok then say(msg or 'Cannot start hand') end;update()
  end)
  button(win,'Reset Game',148,-117,120,reset)

@@ -19,7 +19,7 @@ local function edit(parent,x,y,w,default)
  return e
 end
 local f=CreateFrame('Frame','RaidPokerPlayerManagement',UIParent)
-f:SetWidth(660);f:SetHeight(615);f:SetPoint('CENTER',UIParent,'CENTER',90,0)
+f:SetWidth(660);f:SetHeight(745);f:SetPoint('CENTER',UIParent,'CENTER',90,0)
 f:SetFrameStrata('FULLSCREEN_DIALOG');f:SetMovable(true);f:SetClampedToScreen(true);f:EnableMouse(true)
 R.Backdrop(f)
 local drag=CreateFrame('Frame',nil,f)
@@ -122,6 +122,16 @@ local timerHint=label(f,367,-481,250,'15s / 30s / 60s / OFF')
 label(f,22,-535,605,'Balance / status / removal / GM transfer: between hands only.')
 label(f,22,-555,605,'Force Fold: during an active hand. Only the Game Master may administer.')
 label(f,22,-575,605,'Virtual currency only. No automatic gold transfer.')
+label(f,22,-607,580,'RAID PLAYERS AVAILABLE - ADDON DETECTED','GameFontNormal')
+label(f,22,-629,580,'Not seated at this table. Join through Tables to request a seat.')
+local availableRows={}
+local availablePage=0
+local availableNames={}
+for i=1,4 do
+ availableRows[i]=label(f,30,-653-(i-1)*19,585,'')
+end
+btn(f,'< Previous',390,-723,110,function()availablePage=math.max(0,availablePage-1);R.RefreshPlayerManagement()end)
+btn(f,'Next >',510,-723,105,function()availablePage=availablePage+1;R.RefreshPlayerManagement()end)
 function R.RefreshPlayerManagement()
  if not f:IsShown() then return end
  timerButton:SetText('Turn Timer: '..((R.G.timer or 30)==0 and 'OFF' or tostring(R.G.timer or 30)..'s'))
@@ -146,6 +156,23 @@ function R.RefreshPlayerManagement()
   if p then row.button:Show() else row.button:Hide() end
  end
  if selected and not found then selected=nil;selectLabel:SetText('Selected: none') end
+ availableNames={}
+ local seated={};for _,p in ipairs(R.G.players or {}) do seated[p.name]=true end
+ if GetNumRaidMembers and GetNumRaidMembers()>0 then
+  for i=1,GetNumRaidMembers() do
+   local name=GetRaidRosterInfo(i)
+   if name and not seated[name] and R.GetPokerPeerVersion and R.GetPokerPeerVersion(name) then
+    availableNames[#availableNames+1]=name
+   end
+  end
+ end
+ table.sort(availableNames)
+ availablePage=math.min(availablePage,math.max(0,math.ceil(#availableNames/4)-1))
+ for i,row in ipairs(availableRows) do
+  local name=availableNames[availablePage*4+i]
+  row:SetText(name and (name..'  |  '..(R.GetPokerPeerVersion(name) or 'Unknown')..'  |  IN RAID / NOT SEATED') or '')
+ end
+
 end
 f:SetScript('OnShow',R.RefreshPlayerManagement)
 f:Hide()

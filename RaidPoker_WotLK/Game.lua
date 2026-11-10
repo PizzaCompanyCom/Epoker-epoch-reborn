@@ -343,7 +343,14 @@ local function hostTable(name)
  join(me());broadcast()
  say('Created '..tableName..'. You are Game Master.')
 end
-function R.CreateNamedTable(name) hostTable(name) end
+function R.CreateNamedTable(name)
+ if G.solo then
+  if not raid() then say('Join a raid before creating a multiplayer table.');return end
+  if cleanName(name)=='' then say('Enter a table name.');return end
+  if R.SoloStop then R.SoloStop() end
+ end
+ hostTable(name)
+end
 function R.GetTableDirectory()
  local out={}
  for id,t in pairs(tables) do
@@ -364,6 +371,7 @@ function R.JoinNamedTable(id)
  local t=tables[id]
  if not t or GetTime()-t.seen>45 then say('Refresh the table list.');return end
  if t.count>=10 or t.phase~='LOBBY' then say('Table is full or a hand is in progress.');return end
+ if G.solo and R.SoloStop then R.SoloStop() end
  activeID=id;tableName=t.name;G.host=t.gm;G.phase='LOBBY';G.players={}
  send('JOIN','',t.gm)
  send('SYNC','',t.gm)
@@ -621,6 +629,19 @@ function R.BuildGame(main)
  local pokerTableButton=R.Button(main,'Poker Table',145,30,24,-11,function()R.ToggleTable()end)
  pokerTableButton:SetFrameLevel(main:GetFrameLevel()+5)
  pokerTableButton:SetText('POKER TABLE')
+ local closeSolo=R.Button(main,'Close Solo',145,26,24,-47,function()
+  if R.SoloStop then R.SoloStop() end
+ end)
+ local closeIcon=closeSolo:CreateTexture(nil,'OVERLAY')
+ closeIcon:SetTexture('Interface\\Icons\\INV_Misc_Dice_02');closeIcon:SetSize(20,20)
+ closeIcon:SetPoint('LEFT',closeSolo,'LEFT',7,0)
+ closeSolo:SetText('     CLOSE SOLO')
+ closeSolo:SetScript('OnEnter',function(self)
+  GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText('Close Solo Debug Game')
+  GameTooltip:AddLine('Clears local bots and returns to raid mode.',1,1,1,true);GameTooltip:Show()
+ end)
+ closeSolo:SetScript('OnLeave',function()GameTooltip:Hide()end)
+
  local tableText=pokerTableButton:GetFontString()
  if tableText then tableText:SetTextColor(1,0.86,0.34,1) end
  ui.help=text(main,25,-721,715,'GameFontHighlightSmall');ui.help:SetText('');ui.help:Hide()
@@ -723,6 +744,7 @@ local function botStep()
  end
 end
 function R.SoloStart(count)
+ if activeID~='' then say('Leave or close your network table before starting Solo Debug.');return end
  if G.solo then say('Solo Debug Mode already active. Use /poker debug off to exit.');return end
  if G.phase~='IDLE' and G.phase~='LOBBY' and G.phase~='SHOWDOWN' then say('Finish the current hand before enabling debug.');return end
  count=math.floor(tonumber(count) or 3);if count<1 then count=1 elseif count>9 then count=9 end

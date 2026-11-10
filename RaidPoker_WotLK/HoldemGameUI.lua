@@ -301,6 +301,13 @@ local function build()
  -- The large decorative title is intentionally omitted to match 5-Card Draw.
  local pokerButton=iconButton(frame,'Poker Table','Interface\\Icons\\INV_Misc_Coin_01',130,26,function()local f=_G.RaidPokerBarrensTable;if f and f:IsShown() then f:Hide() elseif R.OpenBarrensTable then R.OpenBarrensTable() end end)
  pokerButton:SetPoint('TOPLEFT',frame,15,-12)
+ local closeSoloButton=iconButton(frame,'Close Solo','Interface\\Icons\\INV_Misc_Dice_02',130,26,function()
+  if R.BarrensCloseSoloGame then local ok,err=R.BarrensCloseSoloGame();if not ok and R.Print then R.Print(err) end end
+ end)
+ closeSoloButton:SetPoint('TOPLEFT',pokerButton,'BOTTOMLEFT',0,-3)
+ closeSoloButton:SetScript('OnEnter',function(self)GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText('Close Solo Debug Game');GameTooltip:AddLine('Clears local bots and preview cards. Does not close a network table.',1,1,1,true);GameTooltip:Show()end)
+ closeSoloButton:SetScript('OnLeave',function()GameTooltip:Hide()end)
+
  local toolbar={
   {'Force Synchronization','Interface\\Icons\\Spell_Nature_EarthBind',function()
     if R.HoldemSync and R.HoldemSync.ForceBroadcast then

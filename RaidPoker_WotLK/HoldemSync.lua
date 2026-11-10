@@ -89,13 +89,20 @@ local function broadcast()
  local session=safe(N.session)
  local board={}
  for i=1,5 do board[i]=H.board[i] and H.CardLabel(H.board[i]) or '-' end
- send('H|'..session..'|'..rev..'|'..safe(H.phase)..'|'..tostring(H.handNumber or 0)..'|'..tostring(H.pot or 0)..'|'..tostring(H.actionSeat or 0)..'|'..table.concat(board,','))
+ send('H|'..session..'|'..rev..'|'..safe(H.phase)..'|'..tostring(H.handNumber or 0)..'|'..tostring(H.pot or 0)..'|'..tostring(H.actionSeat or 0)..'|'..table.concat(board,',')..'|'..tostring(H.currentBet or 0)..'|'..tostring(H.minRaise or 0))
  for i,p in ipairs(H.players or {}) do
-  local flags=(p.folded and 'F' or '-')..(p.allIn and 'A' or '-')
+  local flags=(p.folded and 'F' or '-')..(p.allIn and 'A' or '-')..(p.sittingOut and 'S' or '-')
   send('P|'..session..'|'..rev..'|'..i..'|'..safe(p.name)..'|'..tostring(p.stack or 0)..'|'..tostring(p.street or 0)..'|'..flags)
  end
  send('E|'..session..'|'..rev..'|'..tostring(#(H.players or {})))
+ local payouts={}
+ for seat,amount in pairs(H.winners or {}) do
+  if tonumber(seat) and tonumber(amount) and amount>0 then payouts[#payouts+1]=tostring(seat)..':'..tostring(amount) end
+ end
+ table.sort(payouts)
+ send('W|'..session..'|'..rev..'|'..(#payouts>0 and table.concat(payouts,',') or '-'))
 end
+S.ForceBroadcast=function() if not N.owner or not N.active then return false end;broadcast();return true end
 local function boundedNumber(v,limit)
  local n=tonumber(v)
  if not n or n<0 or n>limit or n~=math.floor(n) then return nil end
@@ -115,12 +122,14 @@ events:SetScript('OnEvent',function(self,event,...)
  for part in (msg..'|'):gmatch('(.-)|') do parts[#parts+1]=part end
  local kind,session,rev=parts[1],parts[2],boundedNumber(parts[3],1000000000)
  if not rev or session~=safe(N.session) then return end
- if kind=='H' and #parts==8 then
+ if kind=='H' and #parts==10 then
   local hand=boundedNumber(parts[5],1000000)
   local pot=boundedNumber(parts[6],100000000)
   local turn=boundedNumber(parts[7],10)
+  local currentBet=boundedNumber(parts[9],100000000)
+  local minRaise=boundedNumber(parts[10],100000000)
   local allowed={LOBBY=true,PREFLOP=true,FLOP=true,TURN=true,RIVER=true,SHOWDOWN=true}
-  if not hand or not pot or not turn or not allowed[parts[4]] then return end
+  if not hand or not pot or not turn or not currentBet or not minRaise or not allowed[parts[4]] then return end
   if rev<S.received then return end
   local board={}
   for c in (parts[8]..','):gmatch('(.-),') do
@@ -129,16 +138,27 @@ events:SetScript('OnEvent',function(self,event,...)
    board[#board+1]=c
   end
   if #board~=5 then return end
-  S.pending={revision=rev,phase=parts[4],handNumber=hand,pot=pot,actionSeat=turn,board=board,players={}}
+  S.pending={revision=rev,phase=parts[4],handNumber=hand,pot=pot,actionSeat=turn,currentBet=currentBet,minRaise=minRaise,board=board,players={},winners={}}
  elseif kind=='P' and #parts==8 and S.pending and S.pending.revision==rev then
   local i=boundedNumber(parts[4],10)
   local stack=boundedNumber(parts[6],100000000)
   local bet=boundedNumber(parts[7],100000000)
-  if not i or i<1 or not stack or not bet or #parts[5]>30 or not parts[8]:match('^[F%-][A%-]$') then return end
-  S.pending.players[i]={name=parts[5],stack=stack,street=bet,folded=parts[8]:sub(1,1)=='F',allIn=parts[8]:sub(2,2)=='A'}
+  if not i or i<1 or not stack or not bet or #parts[5]>30 or not parts[8]:match('^[F%-][A%-][S%-]$') then return end
+  S.pending.players[i]={name=parts[5],stack=stack,street=bet,folded=parts[8]:sub(1,1)=='F',allIn=parts[8]:sub(2,2)=='A',sittingOut=parts[8]:sub(3,3)=='S'}
+ elseif kind=='W' and #parts==4 and S.remote and S.received==rev then
+  local winners={}
+  if parts[4]~='-' then
+   for pair in (parts[4]..','):gmatch('(.-),') do
+    local seat,amount=pair:match('^(%d+):(%d+)$')
+    local i=boundedNumber(seat,10);local value=boundedNumber(amount,100000000)
+    if not i or i<1 or not value then return end
+    winners[i]=value
+   end
+  end
+  S.remote.winners=winners
  elseif kind=='E' and #parts==4 and S.pending and S.pending.revision==rev then
   local count=boundedNumber(parts[4],10)
-  if not count or count<2 then return end
+  if count==nil then return end
   for i=1,count do if not S.pending.players[i] then return end end
   S.remote=S.pending;S.received=rev;S.pending=nil;refresh()
  end

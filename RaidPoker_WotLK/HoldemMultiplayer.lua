@@ -23,6 +23,19 @@ local function waiting() return H.phase=='LOBBY' or H.phase=='SHOWDOWN' end
 local function eligible(name)
  return type(name)=='string' and #name>0 and N.members[name] and raidMember(name)
 end
+local function publishSeats()
+ if not host() or not waiting() then return end
+ -- Publish public seat roster even before the first network hand.
+ H.players={}
+ for i,seat in ipairs(M.seats) do
+  H.players[i]={name=seat.name,stack=seat.stack,street=0,committed=0,folded=false,
+   allIn=false,sittingOut=seat.sittingOut,hole={},dealt=false}
+ end
+ H.phase='LOBBY';H.board={};H.pot=0;H.actionSeat=nil
+ if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
+ if N.BroadcastTableInfo then N.BroadcastTableInfo() end
+end
+M.PublishSeats=publishSeats
 local function refresh()
  if not frame then return end
  local lines={}
@@ -39,23 +52,23 @@ function M.Assign(name)
  for i,s in ipairs(M.seats) do if s.name==name then return true end end
  if #M.seats>=10 then return false,'Table full (10 seats)' end
  M.seats[#M.seats+1]={name=name,stack=M.initialStack,sittingOut=false}
- audit('SEAT '..name);refresh();return true
+ audit('SEAT '..name);publishSeats();refresh();return true
 end
 function M.Remove(name)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
- for i,s in ipairs(M.seats) do if s.name==name then table.remove(M.seats,i);audit('REMOVE '..name);refresh();return true end end
+ for i,s in ipairs(M.seats) do if s.name==name then table.remove(M.seats,i);audit('REMOVE '..name);publishSeats();refresh();return true end end
  return false,'Player not seated'
 end
 function M.SetStack(name,silver)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
  silver=tonumber(silver)
  if not silver or silver<0 or silver>100000000 or silver~=math.floor(silver) then return false,'Invalid silver balance' end
- for _,s in ipairs(M.seats) do if s.name==name then s.stack=silver;audit('BALANCE '..name..' '..silver..'s');refresh();return true end end
+ for _,s in ipairs(M.seats) do if s.name==name then s.stack=silver;audit('BALANCE '..name..' '..silver..'s');publishSeats();refresh();return true end end
  return false,'Player not seated'
 end
 function M.SitOut(name,value)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
- for _,s in ipairs(M.seats) do if s.name==name then s.sittingOut=value and true or false;audit((value and 'SIT OUT ' or 'SIT IN ')..name);refresh();return true end end
+ for _,s in ipairs(M.seats) do if s.name==name then s.sittingOut=value and true or false;audit((value and 'SIT OUT ' or 'SIT IN ')..name);publishSeats();refresh();return true end end
  return false,'Player not seated'
 end
 function M.AutoSeat()
@@ -73,6 +86,15 @@ function M.StartHand()
  local funded=0
  for _,s in ipairs(M.seats) do if not s.sittingOut and s.stack>0 and eligible(s.name) then funded=funded+1 end end
  if funded<2 then return false,'At least two active raid members required' end
+ -- Reject known incompatible clients; do not silently play with mismatched protocols.
+ if R.PokerVersionMatches then
+  for _,seat in ipairs(M.seats) do
+   if not seat.sittingOut and seat.stack>0 and eligible(seat.name) then
+    local match=R.PokerVersionMatches(seat.name)
+    if match==false then return false,'Addon version mismatch: '..seat.name end
+   end
+  end
+ end
  -- Engine must retain its own stacks and hand count between hands.
  H.players={}
  for i,s in ipairs(M.seats) do

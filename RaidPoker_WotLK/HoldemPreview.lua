@@ -39,8 +39,8 @@ local function build()
   end)
  end
  history=line(frame,22,-390,635)
- start=button(frame,'Start Hand',22,-475,140,function()feedback(H.StartPreviewHand())end)
- button(frame,'Reset Preview',174,-475,145,function()H.ResetPreview()end)
+ start=button(frame,'Start Hand',22,-475,140,function()if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then return end;feedback(H.StartPreviewHand())end)
+ button(frame,'Reset Preview',174,-475,145,function()if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then return end;H.ResetPreview()end)
  button(frame,'Close',555,-475,95,function()frame:Hide()end)
  frame:Hide()
 end
@@ -51,7 +51,7 @@ function H.Refresh()
  board:SetText('Community: '..(#s.board>0 and table.concat(s.board,'  ') or '(not dealt)'))
  for i,p in ipairs(s.players) do
   local tags=(p.dealer and ' [D]' or '')..(p.smallBlind and ' [SB]' or '')..(p.bigBlind and ' [BB]' or '')
-  local cards=H.players[i].hole
+  local cards=(not R.BarrensUnifiedMode or R.BarrensUnifiedMode()=='SOLO' or p.name==UnitName('player')) and H.players[i].hole or nil
   local hole=(cards and #cards==2) and (H.CardLabel(cards[1])..' '..H.CardLabel(cards[2])) or '--'
   local state=(p.folded and 'FOLD' or (p.allIn and 'ALL-IN' or (s.actionSeat==i and 'YOUR TURN' or '')))
   local won=s.winners[i] and ('  WON +'..s.winners[i]..'s') or ''

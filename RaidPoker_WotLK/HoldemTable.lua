@@ -362,8 +362,8 @@ local function update()
    local status=(p.folded and ' FOLD' or (p.allIn and ' ALL-IN' or ''))
       -- Keep status inside its own seat, even with a large stack.
    w.status:SetText(money(p.stack)..' | Bet '..money(p.street)..status..(s.winners[i] and (' WIN +'..money(s.winners[i])) or ''))
-   local hole=(R.BarrensUnifiedHole and R.BarrensUnifiedHole(i,s)) or (not R.BarrensUnifiedSnapshot and H.players[i] and H.players[i].hole)
-   for k=1,2 do w.cards[k]:SetCard(hole and hole[k] and (type(hole[k])=='string' and hole[k] or H.CardLabel(hole[k])) or nil,false) end
+   local hole=R.BarrensUnifiedHole and R.BarrensUnifiedHole(i,s) or nil
+   for k=1,2 do w.cards[k]:SetCard(hole and hole[k] and (type(hole[k])=='string' and hole[k] or H.CardLabel(hole[k])) or nil,not hole and (p.dealt or (s.phase~='LOBBY' and s.phase~='SHOWDOWN'))) end
   else
    w.frame:Hide();w.glow:Hide();w.winnerGlow:Hide();w.portrait:Hide();w.winnerLabel:Hide();w.stateLabel:Hide();w.timerBG:Hide();w.timerFill:Hide();w.name:SetText('');w.status:SetText('');w.badge:SetText('')
    for k=1,2 do w.cards[k]:SetCard(nil,false) end

@@ -6,6 +6,7 @@ local H,M,N=R.Holdem,R.HoldemMultiplayer,R.HoldemNetwork
 local W={selected=nil,logs={},rows={}}
 R.HoldemManagement=W
 local frame,head,detail,logText,balanceInput,initialInput,raiseInput,goldInput,silverInput
+local availableRows,availablePage,availableNames={},0,{}
 local function me() return UnitName('player') or '' end
 local function gm() return N.active and N.owner and N.host==me() end
 local function idle() return H.phase=='LOBBY' or H.phase=='SHOWDOWN' end
@@ -13,6 +14,10 @@ local function money(n) n=math.floor(tonumber(n) or 0);return math.floor(n/100).
 local function log(s)
  W.logs[#W.logs+1]=date('%H:%M:%S')..' '..s
  if #W.logs>30 then table.remove(W.logs,1) end
+end
+local function visibleSeats()
+ if gm() then return M.seats end
+ return (R.HoldemSync and R.HoldemSync.remote and R.HoldemSync.remote.players) or {}
 end
 local function seat()
  for i,s in ipairs(M.seats) do if s.name==W.selected then return s,i end end
@@ -47,7 +52,7 @@ function W.Refresh()
  if not frame then return end
  head:SetText('Game Master: '..tostring(N.host or '-')..'   '..(gm() and '[HOST]' or '[READ ONLY]')..'   Hand '..tostring(H.handNumber or 0)..'   '..tostring(H.phase))
  for i=1,10 do
-  local seatData=M.seats[i]
+  local seatData=visibleSeats()[i]
   local row=W.rows[i]
   local name=seatData and seatData.name or nil
   local state=seatData and (seatData.sittingOut and 'SIT OUT' or (seatData.stack==0 and 'BUSTED' or 'PLAYING')) or '-'
@@ -67,6 +72,29 @@ function W.Refresh()
  local s=seat()
  detail:SetText(s and ('Selected: '..s.name..'   Balance '..money(s.stack)) or 'Select a player seat to manage.')
  logText:SetText(table.concat(W.logs,'\n'))
+ availableNames={}
+ if GetNumRaidMembers and GetNumRaidMembers()>0 then
+  local seated={};for _,v in ipairs(visibleSeats()) do seated[v.name]=true end
+  for i=1,GetNumRaidMembers() do
+   local name=GetRaidRosterInfo(i)
+   if name and not seated[name] and R.GetPokerPeerVersion and R.GetPokerPeerVersion(name) then
+    availableNames[#availableNames+1]=name
+   end
+  end
+ end
+ table.sort(availableNames)
+ local pages=math.max(1,math.ceil(#availableNames/4))
+ availablePage=math.min(availablePage,pages-1)
+ for i,row in ipairs(availableRows) do
+  local name=availableNames[availablePage*4+i]
+  row.name=name
+  if name then
+   local state=N.members[name] and 'IN LOBBY' or 'IN RAID'
+   row.label:SetText(name..'  |  '..(R.GetPokerPeerVersion(name) or '?')..'  |  '..state)
+   row.button:Show();if gm() and N.members[name] then row.button:Enable() else row.button:Disable() end
+  else row.label:SetText('');row.button:Hide() end
+ end
+
 end
 local function perform(fn)
  if not gm() then result(false,'Game Master only');return end
@@ -140,8 +168,8 @@ local function build()
   local hit=CreateFrame('Button',nil,frame)
   hit:SetPoint('TOPLEFT',frame,'TOPLEFT',20,y+1);hit:SetWidth(320);hit:SetHeight(21)
   hit:SetScript('OnClick',function()
-   W.selected=M.seats[idx] and M.seats[idx].name or nil
-   local chosen=M.seats[idx]
+   W.selected=visibleSeats()[idx] and visibleSeats()[idx].name or nil
+   local chosen=visibleSeats()[idx]
    if chosen then
     balanceInput:SetText(tostring(chosen.stack))
     goldInput:SetText(tostring(math.floor(chosen.stack/100)))
@@ -197,14 +225,27 @@ local function build()
  end)
  font(frame,355,-430,290,'ADMIN HISTORY (CURRENT SESSION)','GameFontNormal')
  logText=font(frame,355,-453,295,'')
- font(frame,20,-485,315,'GM administration is restricted to idle hands.\nVirtual balances; no actual gold transfer.')
- font(frame,20,-523,330,'TURN TIMER - GAME MASTER','GameFontNormal')
- local timerButton=button(frame,'Turn Timer: 30s',20,-545,178,function()
+ font(frame,20,-394,315,'RAID PLAYERS AVAILABLE','GameFontNormal')
+ font(frame,20,-413,310,'Addon detected | Not seated')
+ for i=1,4 do
+  local row={}
+  row.label=font(frame,20,-430-(i-1)*20,230,'')
+  row.button=button(frame,'Seat',260,-425-(i-1)*20,70,function()
+   if row.name then local ok,err=M.Assign(row.name);result(ok,err) end
+  end)
+  availableRows[i]=row
+ end
+ button(frame,'<',20,-511,32,function()availablePage=math.max(0,availablePage-1);W.Refresh()end)
+ button(frame,'>',58,-511,32,function()availablePage=availablePage+1;W.Refresh()end)
+ font(frame,100,-515,225,'Only joined players can be seated')
+
+ font(frame,355,-520,330,'TURN TIMER - GAME MASTER','GameFontNormal')
+ local timerButton=button(frame,'Turn Timer: 30s',355,-545,178,function()
   if R.CycleBarrensTurnTimer then R.CycleBarrensTurnTimer() end
   if R.RefreshBarrensTimerSetting then R.RefreshBarrensTimerSetting() end
  end)
  frame.barrensTurnTimerButton=timerButton
- font(frame,214,-550,420,'15s / 30s / 60s / OFF - change between hands')
+ font(frame,355,-575,310,'15s / 30s / 60s / OFF')
  if R.RefreshBarrensTimerSetting then R.RefreshBarrensTimerSetting() end
  frame:Hide()
 end

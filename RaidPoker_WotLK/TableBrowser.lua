@@ -33,13 +33,15 @@ local active=label(24,-124,550,'')
 local rows={}
 for i=1,8 do
  local y=-162-(i-1)*31
- local info=label(24,y-4,420,'')
+ local bg=f:CreateTexture(nil,'BACKGROUND');bg:SetTexture('Interface\\Buttons\\WHITE8X8')
+ bg:SetPoint('TOPLEFT',f,'TOPLEFT',20,y+3);bg:SetSize(545,29)
+ local info=label(29,y-4,430,'')
  local join=button('Join',470,y-1,90,function()
   local t=R.GetTableDirectory()[i]
   if t then R.JoinNamedTable(t.id) end
   R.RefreshTableBrowser()
  end)
- rows[i]={info=info,join=join}
+ rows[i]={info=info,join=join,bg=bg}
 end
 button('Leave Table',24,-423,130,function()R.LeaveNamedTable();R.RefreshTableBrowser()end)
 button('Close Table (GM)',168,-423,165,function()R.CloseNamedTable();R.RefreshTableBrowser()end)
@@ -52,10 +54,13 @@ function R.RefreshTableBrowser()
  for i=1,8 do
   local t=list[i]
   if t then
-   rows[i].info:SetText(t.name..'  |  GM: '..t.gm..'  |  '..t.count..'/10  |  '..t.phase)
+   local status=t.count>=10 and 'FULL' or (t.phase=='LOBBY' and 'OPEN' or 'IN GAME')
+   rows[i].info:SetText('['..status..']  '..t.name..'  |  GM: '..t.gm..'  |  '..t.count..'/10')
+   rows[i].bg:SetVertexColor(t.phase=='LOBBY' and .12 or .36,t.phase=='LOBBY' and .42 or .22,.14,.72)
+   rows[i].bg:Show()
    rows[i].join:Show()
    if id~='' or t.count>=10 or t.phase~='LOBBY' then rows[i].join:Disable() else rows[i].join:Enable() end
-  else rows[i].info:SetText('');rows[i].join:Hide() end
+  else rows[i].info:SetText('');rows[i].join:Hide();rows[i].bg:Hide() end
  end
 end
 function R.ToggleTableBrowser()
