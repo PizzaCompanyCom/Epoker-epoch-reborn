@@ -4,7 +4,7 @@
 
 **EpokerWoW Raid** is a multiplayer poker addon that lets you play poker with your friends directly inside World of Warcraft!
 
-<p align="center"> <img width="200px" src="screenshots/Wow 2026-11-10 09-21-04-394.jpg" alt="описание"/> </p>
+<p align="center"> <img width="200px" src="Screenshots/Wow%202026-11-10%2009-21-04-394.jpg" alt="описание"/> </p>
 
 ## Two Poker Games
 
