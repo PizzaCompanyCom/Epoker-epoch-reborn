@@ -33,7 +33,7 @@ Texas Hold'em with two private cards, five community cards, multiple betting rou
 
 1. Install the addon and join a raid group with other players.
 2. Open **EpokerWoW Raid** and select your poker game.
-3. Create or join a poker table.
+3. Click Join Table, If there are no active tables, click Player Management, click Create Table.
 4. The table creator becomes **Game Master**.
 5. The Game Master assigns player balances and manages seats.
 6. Start a hand, place your bets, and play your cards!
