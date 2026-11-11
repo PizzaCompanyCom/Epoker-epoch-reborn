@@ -152,7 +152,7 @@ events:SetScript('OnEvent',function(self,event,...)
   local board={}
   for c in (parts[8]..','):gmatch('(.-),') do
    if #board>=5 then return end
-   if c~='-' and not c:match('^(10|[2-9JQKA])[SHDC]$') then return end
+   if c~='-' and not (c:match('^10[SHDC]$') or c:match('^[2-9JQKA][SHDC]$')) then return end
    board[#board+1]=c
   end
   if #board~=5 then return end

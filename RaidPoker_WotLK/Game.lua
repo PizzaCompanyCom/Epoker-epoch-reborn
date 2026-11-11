@@ -7,6 +7,7 @@ local activeID=''
 local tableName=''
 local lastAdvert=0
 local pendingGMTransfer=nil
+local adminRecord -- forward declaration: used by the GMACK handler above its implementation
 local transferOffer=nil
 local function validID(id) return type(id)=='string' and string.match(id,'^[%w%-]+$') and #id<=48 end
 local function remember(id,name,gm,count,phase)
@@ -1046,7 +1047,7 @@ end
 function R.PublishManagedState() if host() then broadcast() end end
 
 -- v1.6.0 authoritative table administration
-local function adminRecord(action)
+adminRecord=function(action)
  local entry=date('%m/%d %H:%M')..'  ['..tableName..'] '..me()..': '..action
  RaidPokerWotLKDB.adminHistory=RaidPokerWotLKDB.adminHistory or {}
  table.insert(RaidPokerWotLKDB.adminHistory,1,entry)
