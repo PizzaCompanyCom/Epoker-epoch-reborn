@@ -24,7 +24,7 @@ function R.BuildGame(main)
  local ui=R.GameUI
  if not ui then return end
  -- Player seating: fixed, separate cells prevent long names from overlapping.
- for i=1,10 do
+ for i=1,6 do
   local c=math.floor((i-1)/5);local r=(i-1)%5
   local row=ui.rows[i]
   row:ClearAllPoints()

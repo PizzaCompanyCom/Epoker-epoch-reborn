@@ -162,7 +162,11 @@ local function advanceIfReady()
  if not pending then
   reveal()
   if H.phase=='SHOWDOWN' then return end
-  advanceIfReady()
+  -- reveal() has already selected the first eligible actor after the dealer.
+  -- Do not call advanceIfReady() again for a normal betting street: its
+  -- pending branch would advance past that actor before they can act.
+  -- Only auto-run the board when no further betting is possible.
+  if countAble()<=1 then advanceIfReady() end
  else
   H.actionSeat=nextActor(H.actionSeat or H.dealer)
  end
@@ -170,7 +174,7 @@ end
 function H.ResetPreview()
  H.phase='LOBBY';H.board={};H.deck={};H.pot=0;H.dealer=0;H.handNumber=0;H.actionSeat=nil;H.sidePots={};H.winners={};H.winningRanks={};H.log={}
  H.players={}
- local bots=math.max(1,math.min(9,math.floor(tonumber(H.debugBots) or 3)))
+ local bots=math.max(1,math.min(5,math.floor(tonumber(H.debugBots) or 3)))
  for i=1,bots+1 do
   local name=(i==1 and ((UnitName and UnitName('player')) or 'You')) or ('Debug Bot '..(i-1))
   H.players[i]={name=name,stack=1000,hole={},committed=0,street=0,folded=false,allIn=false,sittingOut=false,dealt=false,done=false,raiseAllowed=true}
@@ -255,4 +259,7 @@ function H.GetPublicSnapshot()
  end
  return s
 end
-H.ResetPreview()
+-- Fix 22: a fresh addon load must not populate the public Poker Table with debug bots.
+-- ResetPreview() remains available for an explicitly started Solo Debug session.
+H.phase='LOBBY';H.players={};H.board={};H.deck={};H.pot=0
+H.dealer=0;H.handNumber=0;H.actionSeat=nil;H.sidePots={};H.winners={};H.winningRanks={};H.log={}

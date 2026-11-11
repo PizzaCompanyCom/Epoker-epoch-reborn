@@ -31,7 +31,7 @@ function R.BuildGame(main)
  }
  local function refreshGeometry()
   local list=R.G and R.G.players or {}
-  local n=math.min(10,#list)
+  local n=math.min(6,#list)
   local layout=layouts[n] or {}
   local size=math.max(0.8,math.min(1.2,tonumber(db().seatSize) or 1))
   local cardSize=math.max(0.7,math.min(1.3,tonumber(db().miniCardScale) or 1))
@@ -62,21 +62,17 @@ function R.BuildGame(main)
  end
  V.arrangeSeats=function(count) refreshGeometry() end
  -- The base game tracks virtual silver; gold/silver are display denominations.
- V.pot:ClearAllPoints();V.pot:SetPoint('TOP',f,'TOP',0,-219)
- V.pot:SetWidth(280);V.pot:SetJustifyH('CENTER')
- V.phase:ClearAllPoints();V.phase:SetPoint('TOP',f,'TOP',0,-249)
- V.phase:SetWidth(300);V.phase:SetJustifyH('CENTER')
+ V.pot:ClearAllPoints();V.pot:SetPoint('TOP',f,'TOP',-10,-113)
+ V.pot:SetWidth(170);V.pot:SetJustifyH('RIGHT')
+ V.phase:ClearAllPoints();V.phase:SetPoint('BOTTOM',f,'BOTTOM',0,27)
+ V.phase:SetWidth(340);V.phase:SetJustifyH('CENTER');V.phase:SetFontObject('GameFontNormalLarge')
  V.chipLabel:ClearAllPoints();V.chipLabel:SetPoint('TOP',f,'TOP',0,-270)
  V.chipLabel:SetWidth(220);V.chipLabel:SetJustifyH('CENTER')
- -- Coin icons are positioned in the open center of the felt, not over player cards.
- for i,chip in ipairs(V.chips or {}) do
-  chip:ClearAllPoints();chip:SetPoint('TOP',f,'TOP',-30+(i-1)*30,-291)
-  chip:SetWidth(26);chip:SetHeight(26)
- end
+ -- Coin stacks are anchored dynamically to V.pot by VisualTable.Refresh.
  -- Remove square backing textures entirely; native gold/silver icons are circular.
  for _,t in ipairs(V.chipBacks or {}) do t:Hide() end
  -- Add a dedicated current-turn strip, independent from the bank label.
- V.turnText=newLabel(f,'GameFontNormal')
+ V.turnText=newLabel(f,'GameFontNormalLarge')
  V.turnText:SetPoint('TOP',f,'TOP',0,-342);V.turnText:SetWidth(320)
  -- Per-seat visible bet amounts, dealer marker and turn timer.
  for _,s in ipairs(V.seats or {}) do
@@ -153,7 +149,7 @@ function R.Refresh()
    for _,face in ipairs(s.cardFaces or {}) do face:Hide() end
   end
   if p then
-   s.betText:SetText((p.paid or 0)>0 and ('Bet: '..money(p.paid)) or '')
+   s.betText:SetText('')
    -- Class-colored names when the corresponding raid unit is available.
    local class
    if p.name==UnitName('player') then _,class=UnitClass('player')
@@ -165,21 +161,15 @@ function R.Refresh()
    end
    local color=class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
    if color and s.name then s.name:SetTextColor(color.r,color.g,color.b) end
-   s.turnText:SetText(p.name==active and 'YOUR TURN' or '')
+   s.turnText:SetText('')
    s.dealer:SetText(i==dealerIndex and 'D' or '')
-   if p.fold then s.betText:SetText('FOLDED') end
+   -- Seat labels show stack and status only; no separate bet amount.
    if g.phase=='SHOWDOWN' and V.winName==p.name then
-    s.win:SetText('WINNER!')
+    s.win:SetText('')
    end
   else s.betText:SetText('');s.turnText:SetText('') end
  end
- -- Display a native denomination icon for each nonzero part of the pot.
- local pot=math.max(0,math.floor(tonumber(g.pot) or 0))
- local gold=math.floor(pot/100);local silver=pot%100
- V.chipLabel:SetText(pot>0 and ('GOLD: '..gold..'   SILVER: '..silver) or '')
- for i,chip in ipairs(V.chips or {}) do
-  local visible=(i==1 and gold>0) or (i==2 and silver>0) or (i==3 and gold>=5)
-  chip:SetTexture(i==2 and 'Interface\\MoneyFrame\\UI-SilverIcon' or 'Interface\\MoneyFrame\\UI-GoldIcon')
-  if visible then chip:Show() else chip:Hide() end
- end
+ -- Pot coin visibility is controlled by VisualTable.Refresh.
+ -- Do not hide it here: this wrapper runs after the main refresh.
+
 end

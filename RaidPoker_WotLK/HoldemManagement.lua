@@ -36,7 +36,7 @@ local managementIcons={
  ['Create Table']='Interface\\Icons\\INV_Misc_Key_03',
  ['Join Table']='Interface\\Icons\\INV_Misc_GroupLooking',
  ['Auto Seat Joined']='Interface\\Icons\\INV_Misc_GroupLooking',
- ['Refresh']='Interface\\Icons\\INV_Misc_PocketWatch_01',
+ ['Refresh']='Interface\\Icons\\Ability_Rogue_Sprint',
  ['Lobby']='Interface\\Icons\\INV_Misc_Note_01',
  ['Transfer GM']='Interface\\Icons\\INV_Misc_Head_Human_01',
  ['Set Balance']='Interface\\Icons\\INV_Misc_Coin_01',
@@ -92,7 +92,7 @@ function W.Refresh()
   frame.hf19Status:SetText(N.active and ('Table: '..tostring(N.host or '-')..' [ACTIVE]') or (exists and 'Table already created in raid' or 'No active table'))
  end
  head:SetText('Game Master: '..tostring(N.host or '-')..'   '..(gm() and '[HOST]' or '[READ ONLY]')..'   Hand '..tostring(H.handNumber or 0)..'   '..tostring(H.phase))
- for i=1,10 do
+ for i=1,6 do
   local seatData=visibleSeats()[i]
   local row=W.rows[i]
   local name=seatData and seatData.name or nil
@@ -212,7 +212,7 @@ local function build()
  font(frame,281,-175,54,'VERSION')
  for _,x in ipairs({45,139,210,276,340}) do rule(x,-170,1,242,.24) end
  for i=0,10 do rule(20,-193-i*22,320,1,.35) end
- for i=1,10 do
+ for i=1,6 do
   local idx=i
   local y=-196-(i-1)*22
   if i%2==0 then

@@ -319,9 +319,10 @@ local function startHand()
  nextTurn('');broadcast()
  if G.turn=='' then advance() end
 end
+R.StartPokerHandFromTable = startHand
 local function join(name)
  if not host() or G.phase~='LOBBY' then return end
- if player(name) or #G.players>=10 then return end
+ if player(name) or #G.players>=6 then return end
  if not G.solo and not UnitInRaid(name) then return end
  table.insert(G.players,{name=name,balance=G.stack,status=((G.stack or 0)<=0 and 'Busted' or 'Playing'),inhand=false,fold=false,allin=false,paid=0,total=0,done=false})
  log(name..' joined table'..(((G.stack or 0)<=0) and ' [BUSTED: 0s]' or ''));broadcast()
@@ -379,7 +380,7 @@ function R.JoinNamedTable(id)
  if activeID~='' then say('Leave your current table first.');return end
  local t=tables[id]
  if not t or GetTime()-t.seen>45 then say('Refresh the table list.');return end
- if t.count>=10 or t.phase~='LOBBY' then say('Table is full or a hand is in progress.');return end
+ if t.count>=6 or t.phase~='LOBBY' then say('Table is full or a hand is in progress.');return end
  if G.solo and R.SoloStop then R.SoloStop() end
  activeID=id;tableName=t.name;G.host=t.gm;G.phase='LOBBY';G.players={}
  if R.PokerVersionMatches and R.PokerVersionMatches(t.gm)==false then
@@ -532,7 +533,7 @@ local function input(parent,x,y,w,default)
  return e
 end
 local function button(parent,label,x,y,w,fn)
- return R.Button(parent,label,w or 90,(parent==R.Main and (label=='Tables' or label=='Join Table' or label=='Leave Table' or label=='Start Hand' or label=='History' or label=='Leader' or label=='Check' or label=='Call' or label=='Raise' or label=='Fold' or label=='All-In' or label=='Exchange' or label=='Stand Pat' or label=='Poker Table') and 32 or 24),x,y,fn)
+ return R.Button(parent,label,w or 90,(parent==R.Main and (label=='Tables' or label=='Join Table' or label=='Leave Table' or label=='Start Game' or label=='History' or label=='Leader' or label=='Check' or label=='Call' or label=='Raise' or label=='Fold' or label=='All-In' or label=='Exchange' or label=='Stand Pat' or label=='Poker Table') and 32 or 24),x,y,fn)
 end
 local function panel(parent,x,y,w,h)
  local f=CreateFrame('Frame',nil,parent);f:SetPoint('TOPLEFT',parent,'TOPLEFT',x,y);f:SetWidth(w);f:SetHeight(h)
@@ -552,6 +553,7 @@ function R.BuildGame(main)
  ui.info=text(main,24,-75,730,'GameFontHighlightSmall');ui.info:Hide()
  ui.table=CreateFrame('Frame','RaidFivePokerFloatingTable',UIParent)
  ui.table:SetWidth(405);ui.table:SetHeight(365);ui.table:SetFrameStrata('DIALOG');ui.table:SetMovable(true);ui.table:EnableMouse(true);ui.table:SetClampedToScreen(true)
+ ui.table:HookScript('OnMouseDown',function(self)self:Raise()end)
  ui.table:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=28,insets={left=10,right=10,top=10,bottom=10}})
  R.RegisterBackground(ui.table,0.04,0.045,0.04,1)
  ui.table:SetPoint('CENTER',UIParent,'CENTER',RaidPokerWotLKDB.tableX or 0,RaidPokerWotLKDB.tableY or 220)
@@ -564,7 +566,7 @@ function R.BuildGame(main)
  ui.table:Hide()
  local label=text(ui.table,14,-10,350,'GameFontNormal');label:SetText('POKER TABLE  -  RAID PLAYERS')
  ui.rows={}
- for i=1,10 do
+ for i=1,6 do
   ui.rows[i]=text(ui.table,18,-43-(i-1)*29,365,'GameFontHighlightSmall')
  end
  ui.cards={};ui.cardNames={}
@@ -663,10 +665,10 @@ function R.BuildGame(main)
   elseif #list==0 then R.DiscoverTables();R.HF19LastMode='DRAW';if StaticPopup_Show then StaticPopup_Show('EPOKER_NO_ACTIVE_TABLE') end
   else R.Print('Multiple legacy tables detected. Open Player Management to choose.') end
  end)
- button(main,'Leave Table',168,-375,135,function()R.LeaveNamedTable()end)
- button(main,'Start Hand',312,-375,135,function()startHand()end)
- button(main,'History',456,-375,135,function()if ui.history:IsShown() then ui.history:Hide() else ui.history:Show() end end)
- button(main,'Leader',600,-375,135,function()if ui.leader:IsShown() then ui.leader:Hide() else ui.leader:Show() end end)
+ local pokerTableButton=button(main,'Poker Table',168,-375,135,function()R.ToggleTable()end)
+ button(main,'Start Game',312,-375,135,function()startHand()end)
+ button(main,'Leader',456,-375,135,function()if ui.leader:IsShown() then ui.leader:Hide() else ui.leader:Show() end end)
+ button(main,'Leave Table',600,-375,135,function()R.LeaveNamedTable()end)
  ui.checkButton=button(main,'Check',24,-416,100,function()request('ACT','CHECK;0')end)
  ui.callButton=button(main,'Call',128,-416,100,function()request('ACT','CALL;0')end)
  ui.raiseButton=button(main,'Raise',232,-416,100,function()local amount=R.ReadMoney(ui.raiseGold,ui.raiseSilver)
@@ -703,18 +705,16 @@ function R.BuildGame(main)
   if ante<0 or stack<1 or stack>100000000 then return end
   G.ante=ante;G.stack=stack;broadcast()
  end)
- local pokerTableButton=R.Button(main,'Poker Table',145,30,24,-11,function()R.ToggleTable()end)
- pokerTableButton:SetFrameLevel(main:GetFrameLevel()+5)
- pokerTableButton:SetText('POKER TABLE')
- local closeSolo=R.Button(main,'Close Solo',145,26,24,-47,function()
+ -- Poker Table navigation moved into the primary controls row.
+ local closeSolo=R.Button(main,'Close Bots',145,26,24,-47,function()
   if R.SoloStop then R.SoloStop() end
  end)
  local closeIcon=closeSolo:CreateTexture(nil,'OVERLAY')
  closeIcon:SetTexture('Interface\\Icons\\INV_Misc_Dice_02');closeIcon:SetSize(20,20)
  closeIcon:SetPoint('LEFT',closeSolo,'LEFT',7,0)
- closeSolo:SetText('     CLOSE SOLO')
+ closeSolo:SetText('     CLOSE BOTS')
  closeSolo:SetScript('OnEnter',function(self)
-  GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText('Close Solo Debug Game')
+  GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText('Close Bots / Solo Debug')
   GameTooltip:AddLine('Clears local bots and returns to raid mode.',1,1,1,true);GameTooltip:Show()
  end)
  closeSolo:SetScript('OnLeave',function()GameTooltip:Hide()end)
@@ -740,7 +740,7 @@ end
 function R.Refresh()
  if not ui.status then return end
  ui.status:SetText((G.solo and '[SOLO DEBUG]  ' or '')..'Table: '..(tableName~='' and tableName or 'none')..'  |  Game Master: '..(G.host~='' and G.host or 'none')..'   |   Round: '..G.round..'   |   Phase: '..G.phase)
- ui.info:SetText('Players: '..#G.players..'/10     Ante: '..R.Money(G.ante)..'     Starting stack: '..R.Money(G.stack)..'     Turn timer: '..G.timer..'s')
+ ui.info:SetText('Players: '..#G.players..'/6     Ante: '..R.Money(G.ante)..'     Starting stack: '..R.Money(G.stack)..'     Turn timer: '..G.timer..'s')
 
  -- The GM's synchronized DRAW phase and turn determine visibility.
  local myExchange=(G.phase=='DRAW' and G.turn==me())
@@ -749,7 +749,7 @@ function R.Refresh()
   if ui.exchangeNoticeKey~=key then
    ui.exchangeNoticeKey=key
    ui.exchangeNotice.flashTime=0
-   if R.PokerSound then R.PokerSound('turn') end
+   -- Exchange sound is dispatched once by SoundEventsFix30.lua.
   end
   ui.exchangeNotice:Show();ui.exchangeHandTitle:Hide()
  else
@@ -757,7 +757,7 @@ function R.Refresh()
   ui.exchangeNoticeKey=nil
  end
 
- for i=1,10 do
+ for i=1,6 do
   local p=G.players[i]
   if p then
    local flag=(p.status=='Sitting Out' or p.status=='Busted') and p.status or p.fold and 'FOLD' or p.allin and 'ALL-IN' or p.inhand and 'PLAYING' or 'WAITING'
@@ -791,6 +791,10 @@ events:RegisterEvent('CHAT_MSG_ADDON');events:RegisterEvent('RAID_ROSTER_UPDATE'
 events:SetScript('OnEvent',function(self,event,...)
  if event=='CHAT_MSG_ADDON' then receive(...)
  elseif event=='PLAYER_ENTERING_WORLD' then if raid() and not G.solo then R.DiscoverTables();if activeID~='' then send('SYNC','') end;lastSyncRequest=GetTime() end end
+ -- A real raid participant arriving while local debug is active ends the simulated table.
+ if event=='RAID_ROSTER_UPDATE' and G.solo and GetNumRaidMembers and GetNumRaidMembers()>1 then
+  if R.SoloStop then R.SoloStop() end
+ end
  if event=='RAID_ROSTER_UPDATE' and raid() and not G.solo and GetTime()-lastSyncRequest>8 then lastSyncRequest=GetTime();R.DiscoverTables();if activeID~='' then send('SYNC','') end end
  if event=='RAID_ROSTER_UPDATE' and not G.solo and G.host~='' and not raid() then
   resetTable()
@@ -825,7 +829,7 @@ function R.SoloStart(count)
  if activeID~='' then say('Leave or close your network table before starting Solo Debug.');return end
  if G.solo then say('Solo Debug Mode already active. Use /poker debug off to exit.');return end
  if G.phase~='IDLE' and G.phase~='LOBBY' and G.phase~='SHOWDOWN' then say('Finish the current hand before enabling debug.');return end
- count=math.floor(tonumber(count) or 3);if count<1 then count=1 elseif count>9 then count=9 end
+ count=math.floor(tonumber(count) or 3);if count<1 then count=1 elseif count>5 then count=5 end
  G.solo=true;G.debugHistory={};G.host=me();G.phase='LOBBY';G.players={};G.round=0;G.pot=0;G.bet=0;G.turn='';G.winner='';G.log={};G.hand={};G.selected={}
  join(me())
  for i=1,count do join('DebugBot'..i) end
@@ -834,7 +838,7 @@ function R.SoloStart(count)
 end
 function R.SoloStop()
  if not G.solo then say('Solo Debug Mode is not active.');return end
- G.solo=false;G.host='';G.phase='IDLE';G.players={};G.round=0;G.pot=0;G.bet=0;G.turn='';G.hand={};G.selected={};G.winner='';botAt=0
+ G.solo=false;G.host='';G.phase='IDLE';G.players={};G.round=0;G.pot=0;G.bet=0;G.turn='';G.hand={};G.selected={};G.winner='';G.log={};G.debugHistory={};botAt=0
  say('Solo Debug Mode OFF. Normal raid play restored.');R.Refresh()
 end
 function R.SoloStatus()
@@ -993,6 +997,20 @@ local function adminRecord(action)
  if R.RefreshPlayerManagement then R.RefreshPlayerManagement() end
 end
 function R.GameMasterName() return G.host end
+-- Fix 18: update Ante independently; never overwrite Starting Stack.
+function R.ApplyDrawAnteFromTable(ante)
+ ante=tonumber(ante)
+ if not ante or ante<0 or ante~=math.floor(ante) then return false,'Invalid Ante amount.' end
+ if not host() then return false,'Only the Game Master can change Ante.' end
+ if G.phase~='LOBBY' then return false,'Ante can only be changed in the lobby.' end
+ G.ante=ante
+ if ui and ui.anteGold and ui.anteSilver then
+  ui.anteGold:SetText(tostring(math.floor(ante/100)))
+  ui.anteSilver:SetText(tostring(ante%100))
+ end
+ broadcast()
+ return true,'Ante updated.'
+end
 function R.IsGameMaster() return host() end
 function R.AdminSetBalance(name,amount)
  if not host() then say('Game Master only.');return end

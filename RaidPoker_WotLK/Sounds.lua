@@ -16,7 +16,9 @@ local function enabled(key)
 end
 function R.PokerSound(key,force)
  if not force and not enabled(key) then return end
- if PlaySoundFile and paths[key] then PlaySoundFile(paths[key]) end
+ if key=='deal' then
+  if PlaySound then PlaySound('igCharacterInfoTab') end
+ elseif PlaySoundFile and paths[key] then PlaySoundFile(paths[key]) end
 end
 local f=CreateFrame('Frame','RaidPokerSoundOptions',UIParent)
 f:SetWidth(360);f:SetHeight(390);f:SetPoint('CENTER',UIParent,'CENTER',250,0)

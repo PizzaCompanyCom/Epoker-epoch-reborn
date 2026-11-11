@@ -51,8 +51,8 @@ local function refresh()
  else
   for name,id in pairs(N.discovered) do
    local info=N.discoveredInfo[name] or {}
-   local status=(info.phase=='LOBBY' and (info.count or 0)<10) and 'OPEN' or (info.count or 0)>=10 and 'FULL' or 'IN GAME'
-   lines[#lines+1]='|cff32ff76[ '..status..' TABLE ]|r  '..safe(name)..'  |  GM: '..safe(name)..'  |  '..tostring(info.count or '?')..'/10'
+   local status=(info.phase=='LOBBY' and (info.count or 0)<6) and 'OPEN' or (info.count or 0)>=6 and 'FULL' or 'IN GAME'
+   lines[#lines+1]='|cff32ff76[ '..status..' TABLE ]|r  '..safe(name)..'  |  GM: '..safe(name)..'  |  '..tostring(info.count or '?')..'/6'
   end
  end
  if not N.active then
@@ -65,9 +65,9 @@ local function refresh()
   local name=not N.active and names[i] or nil
   if name then
    local info=N.discoveredInfo[name] or {}
-   local status=(info.phase=='LOBBY' and (info.count or 0)<10) and 'OPEN' or (info.count or 0)>=10 and 'FULL' or 'IN GAME'
+   local status=(info.phase=='LOBBY' and (info.count or 0)<6) and 'OPEN' or (info.count or 0)>=6 and 'FULL' or 'IN GAME'
    b.host=name
-   b:SetText('[ '..status..' ]   '..safe(name)..'   |   '..tostring(info.count or '?')..'/10 seats')
+   b:SetText('[ '..status..' ]   '..safe(name)..'   |   '..tostring(info.count or '?')..'/6 seats')
    b:Show()
    if status=='OPEN' then b:Enable() else b:Disable() end
   else b:Hide();b.host=nil end
@@ -264,7 +264,7 @@ ev:SetScript('OnEvent',function(self,event,...)
    end
    if not ok then
     if R.Print then R.Print('Barrens: '..sender..' joined lobby but could not be seated: '..tostring(why)) end
-    announce('E|'..safe(N.session)..'|'..safe(sender)..'|'..(why=='Table full (10 seats)' and 'FULL' or 'WAIT'))
+    announce('E|'..safe(N.session)..'|'..safe(sender)..'|'..(why=='Table full (6 seats)' and 'FULL' or 'WAIT'))
    end
   end
   if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end

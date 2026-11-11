@@ -16,7 +16,7 @@ end
 local function state()
  local m=multi();local n=net();local count=0;local seated=0;local active=0
  local seats={}
- for i=1,10 do
+ for i=1,6 do
   local p=m and m.seats and m.seats[i]
   if p and p.name then
    seated=seated+1
@@ -51,8 +51,8 @@ function P.Refresh()
  if not frame then return end
  local seats,seated,active,problems=state()
  local n=net()
- summary:SetText('MODE: '..mode()..'    |    PHASE: '..tostring(H.phase or 'LOBBY')..'    |    HOST: '..tostring(n and n.host or '-')..'\nSEATED: '..seated..'/10    |    READY TO PLAY: '..active..'    |    GAME MASTER: '..(owner() and 'YOU' or 'OTHER / NONE'))
- for i=1,10 do
+ summary:SetText('MODE: '..mode()..'    |    PHASE: '..tostring(H.phase or 'LOBBY')..'    |    HOST: '..tostring(n and n.host or '-')..'\nSEATED: '..seated..'/6    |    READY TO PLAY: '..active..'    |    GAME MASTER: '..(owner() and 'YOU' or 'OTHER / NONE'))
+ for i=1,6 do
   local p=seats[i]
   if not p then rows[i]:SetText(string.format('%02d   [EMPTY]',i));rows[i]:SetTextColor(.60,.60,.60)
   else
@@ -90,7 +90,7 @@ local function build()
  summary=label(frame,'',20,-58,555,'GameFontHighlight')
  label(frame,'NETWORK SEATS / FUNDED PLAYER STATUS',20,-117,545,'GameFontNormal')
  rows={}
- for i=1,10 do rows[i]=label(frame,'',27,-145-(i-1)*30,540,'GameFontHighlight') end
+ for i=1,6 do rows[i]=label(frame,'',27,-145-(i-1)*30,540,'GameFontHighlight') end
  detail=label(frame,'',20,-467,555,'GameFontHighlightSmall');detail:SetHeight(60)
  buttons={}
  buttons.start=button(frame,'Start Network Hand',20,-541,165,P.Start)

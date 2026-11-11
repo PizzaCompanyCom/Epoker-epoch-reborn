@@ -77,7 +77,7 @@ local function create()
  for i=1,2 do private[i]=card(felt,42,58);private[i]:SetPoint('CENTER',felt,'CENTER',(i==1 and -26 or 26),-103) end
  local yourCards=text(felt);yourCards:SetPoint('CENTER',felt,0,-145);yourCards:SetText('YOUR PRIVATE CARDS')
  seats={}
- for i=1,10 do
+ for i=1,6 do
   local s=CreateFrame('Frame',nil,felt);s:SetSize(139,56);s:SetPoint('CENTER',felt,'CENTER',positions[i][1],positions[i][2])
   local bg=rectangle(s,139,56,.06,.09,.09,.95);bg:SetPoint('CENTER')
   s.glow=rectangle(s,143,60,.12,.8,.28,.55);s.glow:SetPoint('CENTER');s.glow:SetDrawLayer('BACKGROUND',-1);s.glow:Hide()
@@ -102,7 +102,7 @@ function V.Refresh()
   notice:SetText('Create or join a Network Lobby, then start a multiplayer hand.')
   for i=1,5 do board[i]:SetValue(nil,false) end
   for i=1,2 do private[i]:SetValue(nil,true) end
-  for i=1,10 do seats[i].name:SetText(i..'. [EMPTY]');seats[i].detail:SetText('');seats[i].glow:Hide() end
+  for i=1,6 do seats[i].name:SetText(i..'. [EMPTY]');seats[i].detail:SetText('');seats[i].glow:Hide() end
   return
  end
  phaseText:SetText('HAND '..tostring(s.handNumber or 0)..'  |  '..tostring(s.phase or '?')..'  |  HOST: '..tostring(N.host or '-'))
@@ -118,7 +118,7 @@ function V.Refresh()
   end
  end
  for i=1,2 do private[i]:SetValue(valid and mycards[i] or nil,not valid) end
- for i=1,10 do
+ for i=1,6 do
   local p=s.players and s.players[i];local seat=seats[i]
   if p then
    seat.name:SetText(i..'. '..tostring(p.name or '?'))

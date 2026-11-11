@@ -4,9 +4,10 @@ local R=RPoker
 if not R then return end
 local H=R.Holdem
 if not H then return end
-local D={bots=3,auto=false,delay=0.8,reveal=false}
+local D={bots=3,auto=false,delay=0.8,reveal=false,active=false}
 R.HoldemSoloDebug=D
 local win,info,botLabel,autoButton,revealButton
+local elapsed=0
 local function say(s) if R.Print then R.Print('Barrens Solo Debug: '..s) else DEFAULT_CHAT_FRAME:AddMessage('Barrens Solo Debug: '..s) end end
 local function button(parent,text,x,y,w,fn)
  local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate')
@@ -20,15 +21,24 @@ local function label(parent,x,y,w,text)
 end
 local function update()
  if not win then return end
- botLabel:SetText('Local opponents: '..D.bots..'  |  Seats: '..(D.bots+1)..'/10')
+ botLabel:SetText('Local opponents: '..D.bots..'  |  Seats: '..(D.bots+1)..'/6')
  autoButton:SetText('Auto Bots: '..(D.auto and 'ON' or 'OFF'))
  revealButton:SetText('Reveal Bots: '..(D.reveal and 'ON' or 'OFF'))
  local actor=H.actionSeat and H.players[H.actionSeat]
  info:SetText('Phase: '..(H.phase or 'LOBBY')..'  |  Acting: '..(actor and actor.name or 'none')..'\nOnly local simulated stacks. No network or raid required.')
 end
+-- Explicit shutdown used only on transition from local preview to network play.
+-- Never clear network seats or balances here: the unified adapter owns that transition.
+function D.StopForNetwork()
+ D.auto=false
+ D.reveal=false
+ D.active=false
+ elapsed=0
+ if win then win:Hide() end
+end
 local function reset()
  if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then say('Leave the network table to play Solo Debug.');return end
- D.auto=false;H.debugBots=D.bots;H.ResetPreview();update()
+ D.auto=false;D.active=true;H.debugBots=D.bots;H.ResetPreview();update()
 end
 local function choose(n)
  if H.phase~='LOBBY' and H.phase~='SHOWDOWN' then say('Finish the hand or Reset before changing bot count.');return end
@@ -65,8 +75,8 @@ local function build()
  label(win,20,-22,370,"THE BARRENS HOLD'EM - SOLO DEBUG")
  button(win,'X',385,-14,25,function()win:Hide()end)
  botLabel=label(win,20,-57,385,'')
- for j,n in ipairs({1,3,5,9}) do button(win,n..' Bot'..(n>1 and 's' or ''),20+(j-1)*99,-78,92,function()choose(n)end) end
- button(win,'Start Hand',20,-117,120,function()
+ for j,n in ipairs({1,2,3,5}) do button(win,n..' Bot'..(n>1 and 's' or ''),20+(j-1)*99,-78,92,function()choose(n)end) end
+ button(win,'Start Game',20,-117,120,function()
   if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then say('Leave multiplayer first.');return end
   local ok,msg=H.StartPreviewHand();if not ok then say(msg or 'Cannot start hand') end;update()
  end)
@@ -92,12 +102,19 @@ local function build()
  win:Hide()
 end
 function R.OpenBarrensSoloDebug()
+ if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then say('Leave multiplayer first.');return end
+ if not D.active then reset() end
  build();update();win:Show();win:Raise()
 end
 -- Slow auto-action loop is explicitly opt-in and never acts for seat 1.
-local elapsed=0
 local ticker=CreateFrame('Frame')
 ticker:SetScript('OnUpdate',function(self,dt)
+ -- Network play must never inherit the local auto-bot timer.
+ if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then
+  D.auto=false;elapsed=0
+  if win and win:IsShown() then update() end
+  return
+ end
  if not D.auto or H.phase=='LOBBY' or H.phase=='SHOWDOWN' then elapsed=0;return end
  elapsed=elapsed+dt
  if elapsed>=D.delay then elapsed=0;botStep() end

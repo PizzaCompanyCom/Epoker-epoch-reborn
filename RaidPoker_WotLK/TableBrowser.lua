@@ -54,12 +54,12 @@ function R.RefreshTableBrowser()
  for i=1,8 do
   local t=list[i]
   if t then
-   local status=t.count>=10 and 'FULL' or (t.phase=='LOBBY' and 'OPEN' or 'IN GAME')
-   rows[i].info:SetText('['..status..']  '..t.name..'  |  GM: '..t.gm..'  |  '..t.count..'/10')
+   local status=t.count>=6 and 'FULL' or (t.phase=='LOBBY' and 'OPEN' or 'IN GAME')
+   rows[i].info:SetText('['..status..']  '..t.name..'  |  GM: '..t.gm..'  |  '..t.count..'/6')
    rows[i].bg:SetVertexColor(t.phase=='LOBBY' and .12 or .36,t.phase=='LOBBY' and .42 or .22,.14,.72)
    rows[i].bg:Show()
    rows[i].join:Show()
-   if id~='' or t.count>=10 or t.phase~='LOBBY' then rows[i].join:Disable() else rows[i].join:Enable() end
+   if id~='' or t.count>=6 or t.phase~='LOBBY' then rows[i].join:Disable() else rows[i].join:Enable() end
   else rows[i].info:SetText('');rows[i].join:Hide();rows[i].bg:Hide() end
  end
 end

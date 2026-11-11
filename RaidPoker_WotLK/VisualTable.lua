@@ -104,7 +104,7 @@ network:SetScript('OnEvent',function(self,event,...)
  local members={}
  for _,player in ipairs(R.G.players or {}) do members[player.name]=true end
  for name in string.gmatch(string.sub(msg,7),'[^,]+') do
-  if members[name] and not used[name] and count<10 and string.match(name,'^[%w%-]+$') then
+  if members[name] and not used[name] and count<6 and string.match(name,'^[%w%-]+$') then
    count=count+1;positions[name]=count;used[name]=true
   end
  end
@@ -241,7 +241,7 @@ local function themeApply()
  if V.decorLabel then
   V.decorLabel:SetText(isSolid and "" or a[4]);V.decorLabel:SetTextColor(a[1],a[2],a[3],0.65)
  end
- V.title:SetText('POKER TABLE 7.0 - '..string.upper(current.name))
+ V.title:SetText('')
  if V.themeButton then V.themeButton:SetText('Theme: '..current.name) end
  if V.settingsTheme then V.settingsTheme:SetText('Table Theme: '..current.name) end
 end
@@ -305,31 +305,52 @@ function R.BuildGame(main)
  f:SetWidth(760);f:SetHeight(515);f:SetFrameStrata('DIALOG');f:SetMovable(true);f:SetClampedToScreen(true);f:EnableMouse(true)
  f:SetPoint('CENTER',UIParent,'CENTER',RaidPokerWotLKDB.tableX or 0,RaidPokerWotLKDB.tableY or 100)
  f:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',edgeSize=28,insets={left=11,right=11,top=11,bottom=11}})
- R.RegisterBackground(f,0.13,0.065,0.025,1)
+ R.RegisterBackground(f,0.018,0.022,0.026,1)
  V.frame=f;R.TableFrame=f
+ f:HookScript('OnMouseDown',function(self)self:Raise()end)
  f:SetScale(RaidPokerWotLKDB.tableScale or 1)
  local drag=CreateFrame('Frame',nil,f);drag:SetPoint('TOPLEFT',f,15,-9);drag:SetPoint('TOPRIGHT',f,-47,-9);drag:SetHeight(31)
  drag:EnableMouse(true);drag:RegisterForDrag('LeftButton')
- drag:SetScript('OnDragStart',function()f:StartMoving()end)
+ drag:SetScript('OnDragStart',function()f:Raise();f:StartMoving()end)
  drag:SetScript('OnDragStop',function()
   f:StopMovingOrSizing();local x,y=f:GetCenter();local a,b=UIParent:GetCenter()
   if x and a then RaidPokerWotLKDB.tableX=x-a;RaidPokerWotLKDB.tableY=y-b end
  end)
- V.title=txt(f,22,-19,480,'POKER TABLE 4.0','GameFontNormalLarge')
+ V.title=txt(f,22,-19,340,'','GameFontNormalLarge')
  btn(f,'X',713,-13,29,function()f:Hide()end)
  -- One uninterrupted, full-window table material, behind every seat and card.
  V.tableSurface=f:CreateTexture(nil,'ARTWORK',nil,0)
- V.tableSurface:SetPoint('TOPLEFT',f,'TOPLEFT',12,-34)
- V.tableSurface:SetPoint('BOTTOMRIGHT',f,'BOTTOMRIGHT',-12,32)
+ V.tableSurface:SetPoint('TOPLEFT',f,'TOPLEFT',36,-52)
+ V.tableSurface:SetPoint('BOTTOMRIGHT',f,'BOTTOMRIGHT',-36,50)
  V.tableSurface:SetTexCoord(0,1,0,1)
+ -- Opaque outer mat: it sits behind the reduced playing surface, not above it.
+ V.outerMat=f:CreateTexture(nil,'ARTWORK',nil,-1)
+ V.outerMat:SetTexture('Interface\\Buttons\\WHITE8X8')
+ V.outerMat:SetVertexColor(0.025,0.035,0.035,1)
+ V.outerMat:SetPoint('TOPLEFT',f,'TOPLEFT',12,-34)
+ V.outerMat:SetPoint('BOTTOMRIGHT',f,'BOTTOMRIGHT',-12,18)
+
+ -- Opaque dark header/footer mats hide the old brown backdrop strips.
+ V.headerMat=f:CreateTexture(nil,'ARTWORK',nil,6)
+ V.headerMat:SetTexture('Interface\\Buttons\\WHITE8X8')
+ V.headerMat:SetVertexColor(0.018,0.022,0.026,1)
+ V.headerMat:SetPoint('TOPLEFT',f,'TOPLEFT',12,-12)
+ V.headerMat:SetPoint('BOTTOMRIGHT',f,'TOPRIGHT',-12,-51)
+ V.footerMat=f:CreateTexture(nil,'ARTWORK',nil,6)
+ V.footerMat:SetTexture('Interface\\Buttons\\WHITE8X8')
+ V.footerMat:SetVertexColor(0.018,0.022,0.026,1)
+ V.footerMat:SetPoint('TOPLEFT',f,'BOTTOMLEFT',12,51)
+ V.footerMat:SetPoint('BOTTOMRIGHT',f,'BOTTOMRIGHT',-12,12)
+
+ -- Keep the entire procedural tabletop inside the inner rectangular field.
  -- Procedural wood / cloth surface, all using WHITE8X8 supported by WotLK.
  -- Twelve wide horizontal planks with subtle, deterministic variation.
  V.tablePlanks={}
  for i=1,12 do
   local strip=f:CreateTexture(nil,'ARTWORK',nil,1)
   strip:SetTexture('Interface\\Buttons\\WHITE8X8')
-  strip:SetPoint('TOPLEFT',f,'TOPLEFT',13,-35-(i-1)*39)
-  strip:SetWidth(734);strip:SetHeight(38)
+  strip:SetPoint('TOPLEFT',f,'TOPLEFT',37,-53-(i-1)*34)
+  strip:SetWidth(686);strip:SetHeight(33)
   V.tablePlanks[i]=strip
  end
  -- Dark join lines plus a light rim on the upper side of each plank.
@@ -337,13 +358,13 @@ function R.BuildGame(main)
  for i=1,11 do
   local seam=f:CreateTexture(nil,'ARTWORK',nil,2)
   seam:SetTexture('Interface\\Buttons\\WHITE8X8')
-  seam:SetPoint('TOPLEFT',f,'TOPLEFT',13,-35-i*39+1)
-  seam:SetWidth(734);seam:SetHeight(2)
+  seam:SetPoint('TOPLEFT',f,'TOPLEFT',37,-53-i*34+1)
+  seam:SetWidth(686);seam:SetHeight(2)
   V.tableSeams[i]=seam
   local highlight=f:CreateTexture(nil,'ARTWORK',nil,3)
   highlight:SetTexture('Interface\\Buttons\\WHITE8X8')
-  highlight:SetPoint('TOPLEFT',f,'TOPLEFT',13,-35-i*39+3)
-  highlight:SetWidth(734);highlight:SetHeight(1)
+  highlight:SetPoint('TOPLEFT',f,'TOPLEFT',37,-53-i*34+3)
+  highlight:SetWidth(686);highlight:SetHeight(1)
   V.tableHighlights[i]=highlight
  end
  -- Thin staggered grain strokes. No external artwork or runtime randomness.
@@ -353,89 +374,94 @@ function R.BuildGame(main)
   line:SetTexture('Interface\\Buttons\\WHITE8X8')
   local plank=math.floor((i-1)/9)
   local within=(i-1)%9
-  local x=23+((i*83+plank*41)%190)
-  local y=-41-plank*39-within*3
+  local x=45+((i*83+plank*41)%170)
+  local y=-56-plank*34-within*2
   line:SetPoint('TOPLEFT',f,'TOPLEFT',x,y)
-  line:SetWidth(260+((i*71)%265));line:SetHeight(1)
+  line:SetWidth(180+((i*71)%240));line:SetHeight(1)
   V.tableGrain[i]=line
  end
- -- Small staggered nail / metal rivet marks near plank ends.
- V.tableDetails={}
- for i=1,24 do
-  local dot=f:CreateTexture(nil,'ARTWORK',nil,5)
-  dot:SetTexture('Interface\\Buttons\\WHITE8X8')
-  local row=math.floor((i-1)/2)
-  local side=(i%2==1) and 28 or 720
-  dot:SetPoint('TOPLEFT',f,'TOPLEFT',side+((row*7)%13),-50-row*39)
-  dot:SetWidth(3);dot:SetHeight(3)
-  V.tableDetails[i]=dot
- end
- -- Decorative fittings are placed on the ARTWORK layer, below seat overlays.
- -- Use only native WHITE8X8 so every accent works in WoW 3.3.5a.
- local function decorRect(x,y,w,h,layer)
-  local t=f:CreateTexture(nil,'ARTWORK',nil,layer or -1)
-  t:SetTexture('Interface\\Buttons\\WHITE8X8')
-  t:SetPoint('TOPLEFT',f,'TOPLEFT',x,y)
-  t:SetWidth(w);t:SetHeight(h)
-  return t
- end
- V.decorTrim={}
- -- Narrow metal bands inset from the tabletop edges.
- for _,v in ipairs({{19,-39,721,2},{19,-491,721,2},{19,-39,2,454},{738,-39,2,454}}) do
-  table.insert(V.decorTrim,decorRect(v[1],v[2],v[3],v[4],6))
- end
- V.decorPlates={};V.decorRivets={}
- -- Corner brackets, with two distinct rivets on each plate.
- for _,p in ipairs({{23,-45},{699,-45},{23,-454},{699,-454}}) do
-  table.insert(V.decorPlates,decorRect(p[1],p[2],35,29,6))
-  table.insert(V.decorRivets,decorRect(p[1]+6,p[2]-7,4,4,7))
-  table.insert(V.decorRivets,decorRect(p[1]+25,p[2]-19,4,4,7))
- end
- -- Small centered maker's mark, kept clear of the middle pot and player seats.
- V.decorLabel=f:CreateFontString(nil,'ARTWORK','GameFontNormalSmall')
- V.decorLabel:SetPoint('BOTTOM',f,'BOTTOM',0,41)
- V.decorLabel:SetWidth(170)
- V.decorLabel:SetJustifyH('CENTER')
+ -- Corner plates, rivets, metal bands, maker mark and extra gold trim removed.
+ -- These legacy arrays remain empty so the theme code does not recreate them.
+ V.tableDetails={};V.decorTrim={};V.decorPlates={};V.decorRivets={}
+ V.decorLabel=nil
  -- Legacy oval shapes are retained as hidden placeholders for Table7 compatibility.
  V.ring=f:CreateTexture(nil,'BACKGROUND');V.ring:SetTexture('Interface\\Buttons\\WHITE8X8');V.ring:SetPoint('TOPLEFT',f,95,-107);V.ring:SetWidth(570);V.ring:SetHeight(315)
  V.felt=f:CreateTexture(nil,'BORDER');V.felt:SetTexture('Interface\\Buttons\\WHITE8X8');V.felt:SetPoint('TOPLEFT',f,107,-119);V.felt:SetWidth(546);V.felt:SetHeight(291)
  V.ring:Hide();V.felt:Hide()
  local center=CreateFrame('Frame',nil,f);center:SetPoint('CENTER',f,'CENTER',0,4);center:SetWidth(280);center:SetHeight(130)
+ -- Fix 22: interactive local five-card hand, driven by the existing Game.lua controls.
+ -- This is deliberately display-only for networking: no card IDs are transmitted here.
+ V.handPanel=CreateFrame('Frame',nil,f)
+ V.handPanel:SetWidth(390);V.handPanel:SetHeight(180)
+ V.handPanel:SetPoint('CENTER',f,'CENTER',0,-8)
+ V.handPanel:SetFrameLevel(f:GetFrameLevel()+16)
+ V.handCards={}
+ for i=1,5 do
+  local idx=i
+  local card=CreateFrame('Button',nil,V.handPanel)
+  card:SetWidth(68);card:SetHeight(98)
+  card:SetPoint('TOPLEFT',V.handPanel,'TOPLEFT',13+(i-1)*75,-12)
+  local edge=card:CreateTexture(nil,'BACKGROUND');edge:SetAllPoints(card)
+  edge:SetTexture('Interface\\Buttons\\WHITE8X8');edge:SetVertexColor(.75,.58,.32,1)
+  local art=card:CreateTexture(nil,'ARTWORK')
+  art:SetPoint('TOPLEFT',card,2,-2);art:SetPoint('BOTTOMRIGHT',card,-2,2)
+  art:SetTexture(CARD_BACK)
+  local selection=card:CreateTexture(nil,'OVERLAY')
+  selection:SetAllPoints(card);selection:SetTexture('Interface\\Buttons\\WHITE8X8')
+  selection:SetVertexColor(1,.72,.15,.26);selection:Hide()
+  card:SetScript('OnClick',function()
+   local original=R.GameUI and R.GameUI.cards and R.GameUI.cards[idx]
+   if original and original.Click then original:Click() end
+  end)
+  V.handCards[i]={button=card,art=art,selection=selection}
+ end
+ V.handNotice=V.handPanel:CreateFontString(nil,'OVERLAY','GameFontNormal')
+ V.handNotice:SetPoint('TOP',V.handPanel,'TOP',0,9)
+ V.handNotice:SetText('YOUR FIVE CARDS')
+ V.handCount=V.handPanel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
+ V.handCount:SetPoint('TOP',V.handPanel,'TOP',0,-116)
+ V.handExchange=CreateFrame('Button',nil,V.handPanel,'UIPanelButtonTemplate')
+ V.handExchange:SetWidth(110);V.handExchange:SetHeight(24)
+ V.handExchange:SetPoint('TOPRIGHT',V.handPanel,'TOP',-4,-135)
+ V.handExchange:SetText('Exchange')
+ V.handExchange:SetScript('OnClick',function()
+  local original=R.GameUI and R.GameUI.exchangeButton
+  if original and original.Click then original:Click() end
+ end)
+ V.handPat=CreateFrame('Button',nil,V.handPanel,'UIPanelButtonTemplate')
+ V.handPat:SetWidth(110);V.handPat:SetHeight(24)
+ V.handPat:SetPoint('TOPLEFT',V.handPanel,'TOP',4,-135)
+ V.handPat:SetText('Stand Pat')
+ V.handPat:SetScript('OnClick',function()
+  local original=R.GameUI and R.GameUI.patButton
+  if original and original.Click then original:Click() end
+ end)
+ V.handPanel:Hide()
  V.pot=txt(center,30,-13,250,'POT  0s','GameFontNormalLarge')
+ V.pot:ClearAllPoints();V.pot:SetPoint('TOP',f,'TOP',-10,-113);V.pot:SetWidth(170);V.pot:SetJustifyH('RIGHT')
+ -- No redundant coin icon: gold and silver stacks are displayed next to the pot amount.
  V.phase=txt(center,30,-44,250,'Waiting for players')
+ V.phase:ClearAllPoints();V.phase:SetPoint('BOTTOM',f,'BOTTOM',0,27);V.phase:SetWidth(340);V.phase:SetJustifyH('CENTER');V.phase:SetFontObject('GameFontNormalLarge')
  -- A clearly labelled central pot, separate from the five-card hands at each seat.
  V.chipLabel=txt(center,30,-62,150,'GOLD / SILVER','GameFontNormalSmall')
- V.chips={}
- V.chipBacks={}
- for i=1,3 do
-  local back=center:CreateTexture(nil,'ARTWORK')
-  back:SetTexture('Interface\\Buttons\\WHITE8X8')
-  back:SetVertexColor(0.82,0.58,0.18,0.9)
-  back:SetWidth(24);back:SetHeight(24)
-  back:SetPoint('TOPLEFT',center,45+(i-1)*27,-80)
-  back:Hide()
-  V.chipBacks[i]=back
- end
- for i=1,3 do
-  local chip=center:CreateTexture(nil,'OVERLAY')
-  chip:SetTexture(coinTexture(i==1))
-  chip:SetWidth(30);chip:SetHeight(30)
-  chip:SetPoint('TOPLEFT',center,42+(i-1)*27,-77)
+ V.chipLabel:Hide()
+ -- Compact denomination stacks beside the pot label, above the five-card hand.
+ -- Four overlapping coin sprites per denomination; no row of loose coins.
+ V.chips={};V.chipBacks={};V.chipLetters={}
+ for i=1,8 do
+  local chip=f:CreateTexture(nil,'OVERLAY')
+  chip:SetTexture(coinTexture(i>4))
+  chip:SetWidth(23);chip:SetHeight(23)
   chip:Hide();V.chips[i]=chip
  end
- -- Guaranteed-visible denomination symbols on procedural coin badges.
- V.chipLetters={}
- for i=1,3 do
-  local letter=center:CreateFontString(nil,'OVERLAY','GameFontNormalLarge')
-  letter:SetPoint('CENTER',V.chips[i],'CENTER',0,0)
-  letter:SetText('')
-  letter:SetTextColor(0.10,0.08,0.04,1)
-  letter:Hide()
-  V.chipLetters[i]=letter
- end
+ -- Static markers distinguish gold and silver when only one coin is visible.
+ V.potStackGold=f:CreateFontString(nil,'OVERLAY','GameFontNormalSmall')
+ V.potStackGold:SetText('G');V.potStackGold:SetTextColor(1,0.76,0.18)
+ V.potStackSilver=f:CreateFontString(nil,'OVERLAY','GameFontNormalSmall')
+ V.potStackSilver:SetText('S');V.potStackSilver:SetTextColor(0.8,0.86,0.95)
  -- Visual-only chip transfer and card-deal effects. All betting state remains in Game.lua.
  V.motion={};V.motionLayer=CreateFrame('Frame',nil,f)
- V.motionLayer:SetAllPoints(f);V.motionLayer:SetFrameStrata(f:GetFrameStrata());V.motionLayer:SetFrameLevel(f:GetFrameLevel()+30)
+ V.motionLayer:SetAllPoints(f);V.motionLayer:SetFrameStrata(f:GetFrameStrata());V.motionLayer:SetFrameLevel(f:GetFrameLevel()+30);V.motionLayer:EnableMouse(false)
  -- Restore the original v1.7.33a coin sprites (client-native currency icons).
  -- Unlike the procedural replacement, these are Texture objects, not Frames.
  local function sprite(texture,w,h)
@@ -447,14 +473,15 @@ function R.BuildGame(main)
  for i=13,62 do V.motion[i]=sprite(CARD_BACK,18,25) end
  V.animations={}
  V.winBanner=CreateFrame('Frame',nil,f)
- V.winBanner:SetWidth(310);V.winBanner:SetHeight(42)
- V.winBanner:SetPoint('CENTER',f,'CENTER',0,22)
- V.winBanner:SetFrameLevel(f:GetFrameLevel()+12)
+ V.winBanner:SetWidth(390);V.winBanner:SetHeight(58)
+ V.winBanner:SetPoint('TOP',f,'TOP',0,-194)
+ V.winBanner:SetFrameLevel(f:GetFrameLevel()+40)
  V.winBanner:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\Tooltips\\UI-Tooltip-Border',edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
  V.winBanner:SetBackdropColor(0.12,0.075,0.015,0.92)
  V.winBanner:SetBackdropBorderColor(0.95,0.75,0.24,1)
  V.winBannerText=V.winBanner:CreateFontString(nil,'OVERLAY','GameFontNormalLarge')
  V.winBannerText:SetPoint('CENTER',V.winBanner,'CENTER',0,0)
+ V.winBannerText:SetWidth(372);V.winBannerText:SetHeight(48);V.winBannerText:SetJustifyH('CENTER')
  V.winBannerText:SetTextColor(1,0.85,0.36)
  V.winBanner:Hide()
 
@@ -500,7 +527,7 @@ function R.BuildGame(main)
   [10]={1,2,3,4,5,6,7,8,9,10},
  }
  V.arrangeSeats=function(count)
-  count=math.min(10,math.max(0,count or 0))
+  count=math.min(6,math.max(0,count or 0))
   local layout=layouts[count] or {}
   for i,seat in ipairs(V.seats or {}) do
    if i<=count then
@@ -514,7 +541,7 @@ function R.BuildGame(main)
   end
  end
  V.seats={}
- for i=1,10 do
+ for i=1,6 do
   local x,y=pos[i][1],pos[i][2]
   local s=CreateFrame('Button',nil,f)
   s:SetWidth(194);s:SetHeight(74);s:SetPoint('TOPLEFT',f,'TOPLEFT',math.max(20,math.min(542,x)),y)
@@ -525,7 +552,12 @@ function R.BuildGame(main)
   s.portrait:SetPoint('TOPLEFT',s,'TOPLEFT',22,-7)
   s.portrait:SetTexture('Interface\\Icons\\INV_Misc_Dice_02')
   s.name=txt(s,58,-7,112,'Empty seat','GameFontHighlightSmall')
-  s.info=txt(s,58,-24,130,'','GameFontHighlightSmall')
+  s.info=txt(s,73,-25,112,'','GameFontNormalLarge')
+  s.info:SetJustifyH('LEFT')
+  s.moneyIcon=s:CreateTexture(nil,'OVERLAY')
+  s.moneyIcon:SetTexture('Interface\\MoneyFrame\\UI-GoldIcon')
+  s.moneyIcon:SetWidth(17);s.moneyIcon:SetHeight(17)
+  s.moneyIcon:SetPoint('TOPLEFT',s,'TOPLEFT',56,-25)
   s.dealer=txt(s,174,-7,18,'','GameFontNormal')
   s.status=txt(s,150,-24,44,'','GameFontNormalSmall')
   s.win=txt(s,6,-56,185,'','GameFontNormalSmall')
@@ -554,13 +586,12 @@ function R.BuildGame(main)
   s:SetScript('OnClick',function()setSeat(i)end)
   V.seats[i]=s
  end
- V.message=txt(f,20,-475,340,'Host: click two seats to swap positions for the raid.')
- V.themeButton=btn(f,'Theme: Tavern',492,-466,137,toggleTheme)
- btn(f,'Table Options',380,-466,108,function() if V.options:IsShown() then V.options:Hide() else V.options:Show() end end)
- btn(f,'Reset Seats',636,-466,105,function()
-  RaidPokerWotLKDB.seatPositions={};V.selectedSeat=nil;V.message:SetText('Default seating restored.');R.Refresh();sendSeats()
- end)
- local opt=CreateFrame('Frame',nil,UIParent);opt:SetWidth(340);opt:SetHeight(620);opt:SetFrameStrata('FULLSCREEN_DIALOG');opt:SetPoint('CENTER',UIParent,'CENTER',0,0);opt:SetMovable(true);opt:SetClampedToScreen(true);opt:EnableMouse(true)
+ V.message=txt(f,20,-475,340,'');V.message:Hide()
+ -- Theme selection moved into Settings Table.
+ V.themeButton=nil
+ -- Table Options is available from the Settings Table button in the header.
+
+ local opt=CreateFrame('Frame',nil,UIParent);opt:SetWidth(340);opt:SetHeight(420);opt:SetFrameStrata('FULLSCREEN_DIALOG');opt:SetPoint('CENTER',UIParent,'CENTER',0,0);opt:SetMovable(true);opt:SetClampedToScreen(true);opt:EnableMouse(true)
  opt:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',edgeSize=24,insets={left=8,right=8,top=8,bottom=8}})
  opt:SetBackdropColor(0.06,0.055,0.045,0.97);V.options=opt
  local optDrag=CreateFrame('Frame',nil,opt)
@@ -568,7 +599,7 @@ function R.BuildGame(main)
  optDrag:SetHeight(39);optDrag:EnableMouse(true);optDrag:RegisterForDrag('LeftButton')
  optDrag:SetScript('OnDragStart',function()opt:StartMoving()end)
  optDrag:SetScript('OnDragStop',function()opt:StopMovingOrSizing()end)
- txt(opt,30,-24,240,'POKER TABLE OPTIONS','GameFontNormalLarge')
+ txt(opt,30,-24,240,'SETTINGS TABLE','GameFontNormalLarge')
  btn(opt,'X',295,-15,27,function()opt:Hide()end)
  local scaleLabel=txt(opt,38,-72,250,'Table scale','GameFontNormal')
  local scaleSlider=CreateFrame('Slider','RaidPokerVisualTableScale',opt,'OptionsSliderTemplate')
@@ -601,21 +632,89 @@ function R.BuildGame(main)
   betOption:SetText('Bet Effects: '..(RaidPokerWotLKDB.tableBetEffects==false and 'OFF' or 'ON'))
   winOption:SetText('Winner Effects: '..(RaidPokerWotLKDB.tableWinnerEffects==false and 'OFF' or 'ON'))
  end
+ V.settingsTheme=btn(opt,'Table Theme',40,-350,260,toggleTheme)
  V.updateOptions();opt:Hide()
  local settings=R.SettingsFrame
  if settings then
-  V.settingsTheme=btn(settings,'Table Theme: Tavern',77,-427,210,toggleTheme)
-  V.settingsEffects=btn(settings,'Poker Table Effects',90,-598,180,function()
-   if not V.options then return end
-   if V.options:IsShown() then V.options:Hide() else V.updateOptions();V.options:Show() end
-  end)
+  -- Theme button is now inside the Poker Table settings window.
+  -- Table effects are configured through Settings Table on the Poker Table.
  end
+ -- Hotfix 33: navigation and settings are directly available on Poker Table.
+ local function arrangeGeneral(general)
+  if not general or not general:IsShown() or not f:IsShown() then return end
+  local l1,r1=f:GetLeft(),f:GetRight();local l2,r2=general:GetLeft(),general:GetRight()
+  if l1 and r1 and l2 and r2 and (r1<=l2 or r2<=l1) then return end
+  local sw=UIParent:GetWidth()
+  local ts=RaidPokerWotLKDB.tableScale or 1
+  local gs=general:GetScale() or 1
+  local ratio=math.min(1,(sw-40)/(f:GetWidth()*ts+general:GetWidth()*gs+20))
+  ts=ts*ratio;gs=gs*ratio
+  f:SetScale(ts);general:SetScale(gs)
+  local left=(sw-f:GetWidth()*ts-general:GetWidth()*gs-20)/2
+  f:ClearAllPoints();f:SetPoint('BOTTOMLEFT',UIParent,'BOTTOMLEFT',left/ts,(UIParent:GetHeight()/2-f:GetHeight()*ts/2)/ts)
+  general:ClearAllPoints();general:SetPoint('BOTTOMLEFT',UIParent,'BOTTOMLEFT',(left+f:GetWidth()*ts+20)/gs,(UIParent:GetHeight()/2-general:GetHeight()*gs/2)/gs)
+ end
+ local function showGeneral()
+  -- Use the live GameUI reference; R.Main is not assigned by BuildGame.
+  local general=(R.GameUI and R.GameUI.main) or R.Main
+  if not general then
+   if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('Raid Poker: General window is not available yet.') end
+   return
+  end
+  general:Show()
+  general:Raise()
+  arrangeGeneral(general)
+ end
+ local generalButton=btn(f,'Open General',468,-15,108,showGeneral)
+ generalButton:SetFrameStrata('DIALOG')
+ generalButton:SetFrameLevel(f:GetFrameLevel()+50)
+ local function toggleSettings()
+  if opt:IsShown() then opt:Hide();return end
+  if V.updateOptions then V.updateOptions() end
+  opt:ClearAllPoints()
+  -- Keep the options at the upper right of the screen, independently of table scale.
+  opt:SetPoint('TOPRIGHT',UIParent,'TOPRIGHT',-45,-95)
+  opt:Show()
+  opt:Raise()
+ end
+ local settingsButton=btn(f,'Settings Table',580,-15,119,toggleSettings)
+ local startGameButton=btn(f,'Start Game',333,-15,120,function()
+  if R.StartPokerHandFromTable then R.StartPokerHandFromTable() end
+ end)
+ local closeBotsButton=btn(f,'Close Bots',22,-15,123,function()
+  if R.SoloStop then R.SoloStop() end
+ end)
+  local soloBotsButton=btn(f,'Solo Bots',157,-15,125,function()
+   if R.ToggleDebugPanel then R.ToggleDebugPanel() end
+ end)
+ -- Compact Blizzard icon textures; preserve all original click handlers.
+ local function headerIcon(b,texture)
+  local t=b:CreateTexture(nil,'OVERLAY')
+  t:SetTexture(texture);t:SetSize(15,15);t:SetPoint('LEFT',b,'LEFT',5,0)
+  b:SetText('   '..b:GetText())
+ end
+ headerIcon(soloBotsButton,'Interface\\Icons\\INV_Misc_Dice_02')
+ headerIcon(closeBotsButton,'Interface\\Icons\\Ability_Rogue_FeignDeath')
+ headerIcon(startGameButton,'Interface\\Icons\\INV_Misc_Coin_01')
+ headerIcon(generalButton,'Interface\\Icons\\INV_Misc_Book_09')
+ headerIcon(settingsButton,'Interface\\Icons\\Trade_Engineering')
+ -- Header drag and decorative layers must never intercept these controls.
+ for _,b in ipairs({generalButton,settingsButton,startGameButton,closeBotsButton,soloBotsButton}) do
+  b:SetFrameStrata('DIALOG')
+  b:SetFrameLevel(f:GetFrameLevel()+70)
+  b:EnableMouse(true)
+  b:HookScript('OnMouseDown',function() f:Raise() end)
+ end
+ settingsButton:SetFrameStrata('DIALOG')
+ settingsButton:SetFrameLevel(f:GetFrameLevel()+70)
  -- The old 405px list is not shown, but its data and existing UI hooks remain.
  R.ToggleTable=function()
   V.oldTable:Hide()
-  if f:IsShown() then f:Hide();opt:Hide() else f:Show();requestSeats();R.Refresh(); if V.pendingDeal then V.pendingDeal=false;V.launch('CARD',1) end end
+  if f:IsShown() then f:Hide();opt:Hide() else f:Show();requestSeats();R.Refresh();arrangeGeneral((R.GameUI and R.GameUI.main) or R.Main); if V.pendingDeal then V.pendingDeal=false;V.launch('CARD',1) end end
  end
  f:SetScript('OnHide',function()opt:Hide()end)
+ -- The visual table has UIParent as its parent and is not hidden with the main frame.
+ if f:GetParent()~=UIParent then f:SetParent(UIParent) end
  f:Hide();themeApply()
  -- Opening the main frame or closing it preserves the existing table behavior.
 end
@@ -636,41 +735,93 @@ function R.Refresh()
   V.launch('CHIP',idx)
  end
  V.lastRound=g.round or 0;V.lastPot=g.pot or 0
+ -- Hand visuals use the same local hand/selection as the main window.
+ local myTurn=(g.phase=='DRAW' and g.turn==UnitName('player'))
+ local hand=g.hand or {}
+ local hasHand=(#hand==5 and g.phase~='IDLE' and g.phase~='LOBBY')
+ if hasHand then
+  V.handPanel:Show()
+  local selectedCount=0
+  for i=1,5 do
+   local entry=V.handCards[i]
+   entry.art:SetTexture(artFor(hand[i]))
+   local chosen=(g.selected and g.selected[i]) and true or false
+   if chosen then selectedCount=selectedCount+1;entry.selection:Show()
+   else entry.selection:Hide() end
+   entry.button:EnableMouse(myTurn)
+  end
+  V.handCount:SetText(myTurn and ('Cards selected: '..selectedCount..'/3') or 'YOUR CURRENT HAND')
+  V.handNotice:SetText(myTurn and 'YOUR TURN - CARD EXCHANGE' or 'YOUR FIVE CARDS')
+  V.handNotice:SetTextColor(myTurn and 1 or .95,myTurn and .75 or .86,.35)
+  if myTurn then V.handExchange:Show();V.handPat:Show()
+  else V.handExchange:Hide();V.handPat:Hide() end
+  if myTurn and selectedCount>0 and selectedCount<=3 then
+   V.handExchange:Enable()
+  else
+   V.handExchange:Disable()
+  end
+ else V.handPanel:Hide() end
  V.pot:SetText('POT  '..formatMoney(g.pot))
+ if V.potCoin then V.potCoin:Hide() end
  if g.solo then V.message:SetText('SOLO DEBUG  |  Local game')
  elseif isHost() then V.message:SetText('RAID HOST  |  Seat sync enabled')
  elseif g.host and g.host~='' then V.message:SetText('RAID CLIENT  |  Host: '..g.host)
  else V.message:SetText('Not connected to a poker host') end
- V.chipLabel:SetText((g.pot or 0)>0 and 'GOLD / SILVER' or '')
+ V.chipLabel:SetText('')
  V.phase:SetText('Round '..tostring(g.round or 0)..'  |  '..tostring(g.phase or 'IDLE'))
  if V.winBanner and (g.phase~='SHOWDOWN' or RaidPokerWotLKDB.tableWinnerEffects==false) then V.winBanner:Hide();V.winBannerTime=nil end
  if g.phase=='SHOWDOWN' and g.winner and g.winner~='' then
-  V.phase:SetText('WINNER: '..string.sub(R.MoneyText(g.winner),1,40))
+  V.phase:SetText('Round '..tostring(g.round or 0)..'  |  SHOWDOWN')
   if V.lastWinnerRound~=(g.round or 0) then
    V.lastWinnerRound=g.round or 0;V.winElapsed=0;V.winName=string.match(g.winner,'^([^ ;]+)')
    V.winTransferPending=true
    if V.winBanner and RaidPokerWotLKDB.tableWinnerEffects~=false then
-    V.winBannerText:SetText('WINNER: '..string.sub(V.winName or '?',1,22))
+    -- The game result uses `Name +120s (One Pair)`; display the actual
+    -- winning combination beneath the winner name, including split pots.
+    local winnerLines={}
+    for result in string.gmatch(g.winner,'([^;]+)') do
+     local name,combo=string.match(result,'^%s*([^%s]+)%s+%+%d+s%s+%(([^%)]+)%)')
+     if name then
+      table.insert(winnerLines,'WINNER: '..string.sub(name,1,22)..'\nWinning Hand: '..(combo or 'Unknown'))
+     end
+    end
+    if #winnerLines==0 then
+     table.insert(winnerLines,'WINNER: '..string.sub(V.winName or '?',1,22))
+    end
+    V.winBannerText:SetText(table.concat(winnerLines,'  |  '))
     V.winBannerTime=0;V.winBanner:Show()
    end
 
   end
  end
- local n=math.min(3,math.max(1,math.ceil((g.pot or 0)/math.max(1,(g.ante or 10)*4))))
- local gold=math.floor((g.pot or 0)/100)
- local silver=(g.pot or 0)%100
- V.chipLabel:SetText('GOLD: '..gold..'  SILVER: '..silver)
- for i,chip in ipairs(V.chips) do
-  local visible=(i==1 and gold>0) or (i==2 and silver>0) or (i==3 and gold>=5)
-  chip:SetTexture(coinTexture(i==2))
-  chip:SetVertexColor(1,1,1,1)
-  if V.chipLetters and V.chipLetters[i] then if visible then V.chipLetters[i]:Show() else V.chipLetters[i]:Hide() end end
-  if visible then
-   chip:Show();V.chipBacks[i]:Hide()
-   if i==2 then V.chipBacks[i]:SetVertexColor(0.64,0.72,0.8,0.95)
-   else V.chipBacks[i]:SetVertexColor(0.82,0.58,0.18,0.95) end
-  else chip:Hide();V.chipBacks[i]:Hide() end
+ -- Compact gold/silver stacks: each denomination grows vertically instead
+ -- of consuming horizontal space. All values are cosmetic; pot is authoritative.
+ local potAmount=math.max(0,math.floor(tonumber(g.pot) or 0))
+ local gold=math.floor(potAmount/100)
+ local silver=potAmount%100
+ local function stackHeight(amount)
+  if amount<=0 then return 0 end
+  if amount<5 then return 1 end
+  if amount<20 then return 2 end
+  if amount<50 then return 3 end
+  return 4
  end
+ local goldHeight=stackHeight(gold)
+ local silverHeight=stackHeight(silver)
+ for i,chip in ipairs(V.chips) do
+  local isSilver=i>4
+  local index=isSilver and (i-4) or i
+  local height=isSilver and silverHeight or goldHeight
+  chip:ClearAllPoints()
+  chip:SetPoint('TOP',V.pot,'TOPRIGHT',isSilver and 79 or 42,-(4-index)*5+1)
+  chip:SetTexture(coinTexture(isSilver))
+  chip:SetVertexColor(1,1,1,1)
+  if index<=height then chip:Show() else chip:Hide() end
+ end
+ V.potStackGold:ClearAllPoints();V.potStackGold:SetPoint('TOP',V.pot,'TOPRIGHT',42,-27)
+ V.potStackSilver:ClearAllPoints();V.potStackSilver:SetPoint('TOP',V.pot,'TOPRIGHT',79,-27)
+ if goldHeight>0 then V.potStackGold:Show() else V.potStackGold:Hide() end
+ if silverHeight>0 then V.potStackSilver:Show() else V.potStackSilver:Hide() end
  if V.winTransferPending and V.frame:IsShown() then
   V.winTransferPending=false
   local winnerIndex
@@ -710,12 +861,15 @@ function R.Refresh()
     s.portrait:SetTexCoord(0,1,0,1)
    end
    s.portrait:Show()
-   s.info:SetText(R.Money(p.balance)..' | Bet '..R.Money(p.paid))
+   local stack=math.max(0,math.floor(tonumber(p.balance) or 0))
+   s.info:SetText(formatMoney(stack))
+   s.moneyIcon:SetTexture(coinTexture(stack<100))
+   s.moneyIcon:Show()
    s.status:SetText(st)
-   if (p.paid or 0)>0 then s.betChip:SetTexture(coinTexture((p.paid or 0)<100));s.betChip:Show() else s.betChip:Hide() end
+   s.betChip:Hide() -- Player seat shows stack only; current wager remains in main betting UI.
    s.status:SetTextColor(p.fold and 0.6 or 1,p.fold and 0.6 or (p.allin and 0.4 or 0.83),p.fold and 0.6 or 0.2)
    s.dealer:SetText(i==dealerIndex and 'D' or '')
-   s.win:SetText((g.phase=='SHOWDOWN' and V.winName==p.name) and 'WINNER!' or '')
+   s.win:SetText('')
    if p.name==g.turn and RaidPokerWotLKDB.tableTurnGlow~=false and g.phase~='SHOWDOWN' then s.turnGlow:Show() else s.turnGlow:Hide() end
    if g.phase=='SHOWDOWN' and V.winName==p.name and RaidPokerWotLKDB.tableWinnerEffects~=false then s.winGlow:Show() else s.winGlow:Hide() end
    if p.name==g.turn then
@@ -746,7 +900,7 @@ function R.Refresh()
    if revealed and revealed.combo and revealed.combo~='' then s.status:SetText(revealed.combo) end
   else
    s.turnGlow:Hide();s.winGlow:Hide()
-   s.name:SetText('Empty seat');s.info:SetText('');s.dealer:SetText('');s.status:SetText('');s.win:SetText('');s.portrait:Hide();s.betChip:Hide()
+   s.name:SetText('Empty seat');s.info:SetText('');s.moneyIcon:Hide();s.dealer:SetText('');s.status:SetText('');s.win:SetText('');s.portrait:Hide();s.betChip:Hide()
    s:SetBackdropColor(0.025,0.025,0.025,0.65);s:SetBackdropBorderColor(0.28,0.25,0.2,1)
    s.name:SetTextColor(0.5,0.5,0.5)
    for _,card in ipairs(s.cards) do card:Hide() end

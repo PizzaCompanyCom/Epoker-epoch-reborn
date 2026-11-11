@@ -70,7 +70,7 @@ local function sortedPlayers()
 end
 local function publicPlayers(s)
  local a={}
- for i=1,10 do
+ for i=1,6 do
   local p=s.players and s.players[i]
   if p and p.name and p.name~='' then
    local state=p.sittingOut and 'SIT OUT' or (p.folded and 'FOLD' or (p.allIn and 'ALL-IN' or 'PLAYING'))
@@ -140,7 +140,7 @@ local function linesForPage()
   lines[#lines+1]='Phase: '..tostring(s.phase or 'LOBBY')..'  Hand: '..tostring(s.handNumber or 0)
   lines[#lines+1]=''
   local assigned,playing,busted,sitting=0,0,0,0
-  for i=1,10 do
+  for i=1,6 do
    local p=(m and m.seats and m.seats[i]) or (s.players and s.players[i])
    if p and p.name and p.name~='' then
     assigned=assigned+1
@@ -149,7 +149,7 @@ local function linesForPage()
     else playing=playing+1 end
    end
   end
-  lines[#lines+1]='Seats: '..assigned..'/10  Playing: '..playing..'  Sitting Out: '..sitting..'  Busted: '..busted
+  lines[#lines+1]='Seats: '..assigned..'/6  Playing: '..playing..'  Sitting Out: '..sitting..'  Busted: '..busted
   lines[#lines+1]=''
   lines[#lines+1]='READINESS'
   lines[#lines+1]=(n and n.active and '[OK]' or '[WAIT]')..' Network lobby established'

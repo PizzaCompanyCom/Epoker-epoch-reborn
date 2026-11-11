@@ -51,7 +51,7 @@ function M.Assign(name)
  if not eligible(name) then return false,'Player must join lobby and raid' end
  if name~=playerName() and R.PokerVersionMatches and R.PokerVersionMatches(name)~=true then return false,'Incompatible or unknown addon version: '..name end
  for i,s in ipairs(M.seats) do if s.name==name then return true end end
- if #M.seats>=10 then return false,'Table full (10 seats)' end
+ if #M.seats>=6 then return false,'Table full (6 seats)' end
  local stack=math.max(0,math.floor(tonumber(M.initialStack) or 0))
  M.seats[#M.seats+1]={name=name,stack=stack,sittingOut=false}
  audit('SEAT '..name..(stack==0 and ' [BUSTED]' or ''))
@@ -83,7 +83,7 @@ function M.AutoSeat()
  local names={}
  for name in pairs(N.members) do if eligible(name) then names[#names+1]=name end end
  table.sort(names)
- for _,name in ipairs(names) do if #M.seats<10 then M.Assign(name) end end
+ for _,name in ipairs(names) do if #M.seats<6 then M.Assign(name) end end
  refresh();return true
 end
 function M.StartHand()

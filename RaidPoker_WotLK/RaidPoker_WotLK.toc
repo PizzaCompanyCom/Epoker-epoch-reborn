@@ -54,3 +54,5 @@ PeerVersions.lua
 Hotfix19.lua
 
 Hotfix20.lua
+BettingControlsHF07.lua
+SoundEventsFix30.lua

@@ -57,7 +57,7 @@ function T.Refresh()
   potText:SetText('Pot: --')
   turnText:SetText('No active synchronized hand')
   privateText:SetText('Your cards: [hidden] [hidden]')
-  for i=1,10 do rows[i]:SetText(i..'. [Empty]') end
+  for i=1,6 do rows[i]:SetText(i..'. [Empty]') end
   return
  end
  local board={}
@@ -71,7 +71,7 @@ function T.Refresh()
  if mycards and #mycards==2 and P.privateHand==s.handNumber then
   privateText:SetText('Your cards: '..card(mycards[1])..'   '..card(mycards[2]))
  else privateText:SetText('Your cards: [hidden] [hidden]') end
- for i=1,10 do
+ for i=1,6 do
   local p=s.players and s.players[i]
   if p then
    local status=p.folded and 'FOLDED' or (p.allIn and 'ALL-IN' or (p.sittingOut and 'SIT OUT' or 'PLAYING'))
@@ -95,7 +95,7 @@ local function build()
  potText=label(20,-123,610,'GameFontNormal')
  turnText=label(20,-152,610,'GameFontNormal')
  privateText=label(20,-184,610,'GameFontNormal')
- for i=1,10 do rows[i]=label(22,-211-(i-1)*24,610) end
+ for i=1,6 do rows[i]=label(22,-211-(i-1)*24,610) end
  notice=label(20,-465,615)
  notice:SetText('Public table state. Only your private cards are shown.')
  button('Fold',20,-495,80,function()act('FOLD')end)

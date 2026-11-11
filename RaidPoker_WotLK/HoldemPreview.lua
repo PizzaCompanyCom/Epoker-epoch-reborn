@@ -39,7 +39,7 @@ local function build()
   end)
  end
  history=line(frame,22,-390,635)
- start=button(frame,'Start Hand',22,-475,140,function()if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then return end;feedback(H.StartPreviewHand())end)
+ start=button(frame,'Start Game',22,-475,140,function()if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then return end;feedback(H.StartPreviewHand())end)
  button(frame,'Reset Preview',174,-475,145,function()if R.BarrensUnifiedMode and R.BarrensUnifiedMode()=='NETWORK' then return end;H.ResetPreview()end)
  button(frame,'Close',555,-475,95,function()frame:Hide()end)
  frame:Hide()

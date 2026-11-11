@@ -55,7 +55,7 @@ function R.RefreshBarrensTableDesk()
  if not W then return end
  local n=net();local m=multi()
  local count=0;local ready=0
- for i=1,10 do
+ for i=1,6 do
   local p=m and m.seats and m.seats[i]
   if p and p.name then
    count=count+1
@@ -67,7 +67,7 @@ function R.RefreshBarrensTableDesk()
  summary:SetText('MODE: '..tostring(R.BarrensUnifiedMode and R.BarrensUnifiedMode() or 'SOLO')
   ..'    |    GM: '..tostring(n and n.host or '-')
   ..'    |    PHASE: '..tostring(H.phase or '-')
-  ..'\nSEATED: '..count..'/10    |    READY: '..ready
+  ..'\nSEATED: '..count..'/6    |    READY: '..ready
   ..'    |    '..(active() and '|cff66ff66GM CONTROLS ENABLED|r' or '|cffffaa55GM CONTROLS LOCKED|r'))
  local p=seat()
  selection:SetText(p and ('SELECTED: '..p.name..' / '..money(p.stack)) or 'SELECTED: Empty seat')
@@ -103,7 +103,7 @@ local function build()
  text(W,20,-113,300,'PLAYER SEATS','GameFontNormal')
  text(W,370,-113,350,'GAME MASTER ACTIONS','GameFontNormal')
  seatLabels={};controls={}
- for i=1,10 do
+ for i=1,6 do
   local index=i
   local b=button(W,'',20,-138-(i-1)*30,325,function()selectedSeat=index;R.RefreshBarrensTableDesk()end)
   seatLabels[i]=b:GetFontString()

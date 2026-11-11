@@ -7,7 +7,7 @@ local N=R.HoldemNetwork
 local H=R.Holdem
 if not N or not H then return end
 local PREFIX='RPBH4C'
-local S={revision=0,received=0,remote=nil,hostLast=0}
+local S={revision=0,received=0,remote=nil,hostLast=0,remoteSession=nil,remoteHost=nil}
 R.HoldemSync=S
 local win,headline,boardLabel,seatLabel,foot
 local function me() return UnitName('player') or '' end
@@ -122,6 +122,12 @@ events:SetScript('OnEvent',function(self,event,...)
  for part in (msg..'|'):gmatch('(.-)|') do parts[#parts+1]=part end
  local kind,session,rev=parts[1],parts[2],boundedNumber(parts[3],1000000000)
  if not rev or session~=safe(N.session) then return end
+ -- A newly joined table starts its revision counter at 1. Never carry the
+ -- previous host/session revision or public snapshot into the new lobby.
+ if S.remoteSession~=session or S.remoteHost~=sender then
+  S.remoteSession=session;S.remoteHost=sender
+  S.received=0;S.pending=nil;S.remote=nil
+ end
  if kind=='H' and #parts==10 then
   local hand=boundedNumber(parts[5],1000000)
   local pot=boundedNumber(parts[6],100000000)
@@ -130,7 +136,9 @@ events:SetScript('OnEvent',function(self,event,...)
   local minRaise=boundedNumber(parts[10],100000000)
   local allowed={LOBBY=true,PREFLOP=true,FLOP=true,TURN=true,RIVER=true,SHOWDOWN=true}
   if not hand or not pot or not turn or not currentBet or not minRaise or not allowed[parts[4]] then return end
-  if rev<S.received then return end
+  -- Ignore completed/older revisions, and never replace a newer
+  -- incomplete snapshot with a delayed header from an older revision.
+  if rev<=S.received or (S.pending and rev<S.pending.revision) then return end
   local board={}
   for c in (parts[8]..','):gmatch('(.-),') do
    if #board>=5 then return end
@@ -140,7 +148,7 @@ events:SetScript('OnEvent',function(self,event,...)
   if #board~=5 then return end
   S.pending={revision=rev,phase=parts[4],handNumber=hand,pot=pot,actionSeat=turn,currentBet=currentBet,minRaise=minRaise,board=board,players={},winners={}}
  elseif kind=='P' and #parts==8 and S.pending and S.pending.revision==rev then
-  local i=boundedNumber(parts[4],10)
+  local i=boundedNumber(parts[4],6)
   local stack=boundedNumber(parts[6],100000000)
   local bet=boundedNumber(parts[7],100000000)
   if not i or i<1 or not stack or not bet or #parts[5]>30 or not parts[8]:match('^[F%-][A%-][S%-]$') then return end
@@ -150,16 +158,18 @@ events:SetScript('OnEvent',function(self,event,...)
   if parts[4]~='-' then
    for pair in (parts[4]..','):gmatch('(.-),') do
     local seat,amount=pair:match('^(%d+):(%d+)$')
-    local i=boundedNumber(seat,10);local value=boundedNumber(amount,100000000)
+    local i=boundedNumber(seat,6);local value=boundedNumber(amount,100000000)
     if not i or i<1 or not value then return end
     winners[i]=value
    end
   end
   S.remote.winners=winners
  elseif kind=='E' and #parts==4 and S.pending and S.pending.revision==rev then
-  local count=boundedNumber(parts[4],10)
+  local count=boundedNumber(parts[4],6)
   if count==nil then return end
   for i=1,count do if not S.pending.players[i] then return end end
+  -- Reject extra seat entries: they must not leak into the next snapshot.
+  for i=count+1,6 do if S.pending.players[i] then return end end
   S.remote=S.pending;S.received=rev;S.pending=nil;refresh()
  end
 end)
@@ -167,6 +177,12 @@ local timer=CreateFrame('Frame')
 local elapsed=0
 timer:SetScript('OnUpdate',function(self,dt)
  elapsed=elapsed+dt
+ -- Clear stale client-side state when leaving the lobby. A new session
+ -- will establish its own revision sequence on the next host snapshot.
+ if not N.active and (S.remote or S.pending or S.remoteSession) then
+  S.remote=nil;S.pending=nil;S.received=0;S.remoteSession=nil;S.remoteHost=nil
+  refresh()
+ end
  if elapsed>=1.5 then elapsed=0;broadcast();if win and win:IsShown() then refresh() end end
 end)
 local old=SlashCmdList.RAIDFIVEPOKER

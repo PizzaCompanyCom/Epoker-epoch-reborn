@@ -44,7 +44,25 @@ local joinTable=btn(f,'Join Table',178,-78,145,function()
  elseif #list==0 then R.DiscoverTables();if StaticPopup_Show then StaticPopup_Show('EPOKER_NO_ACTIVE_TABLE') end
  else R.Print('Multiple legacy tables detected. Use Table Browser.') end
 end)
-local createState=label(f,340,-83,280,'No active table')
+-- Fix 30: refresh discovery, state and peer-version information without changing balances.
+local refreshButton=btn(f,'Refresh',337,-78,114,function()
+ if R.DiscoverTables then R.DiscoverTables() end
+ if R.RequestSync and R.ActiveTableID and R.ActiveTableID()~='' then R.RequestSync() end
+ if R.RequestPokerPeerVersions then R.RequestPokerPeerVersions() end
+ if R.RefreshPlayerManagement then R.RefreshPlayerManagement() end
+end)
+local refreshIcon=refreshButton:CreateTexture(nil,'OVERLAY')
+refreshIcon:SetTexture('Interface\\Icons\\Ability_Rogue_Sprint')
+refreshIcon:SetWidth(17);refreshIcon:SetHeight(17)
+refreshIcon:SetPoint('LEFT',refreshButton,'LEFT',7,0)
+local refreshText=refreshButton:GetFontString()
+if refreshText then
+ refreshText:ClearAllPoints()
+ refreshText:SetPoint('LEFT',refreshButton,'LEFT',25,0)
+ refreshText:SetPoint('RIGHT',refreshButton,'RIGHT',-4,0)
+ refreshText:SetJustifyH('CENTER')
+end
+local createState=label(f,460,-83,170,'No active table')
 local nt=createTable:GetNormalTexture();if nt then nt:SetVertexColor(.82,.22,.22) end
 -- v1.6.7: fixed-column roster with alternating rows and grid rules.
 local rows,selected={},nil
@@ -69,7 +87,7 @@ for i=0,10 do line(20,-138-i*21,616,1,.34) end
 for _,x in ipairs({196,319,448,506,572}) do line(x,-114,1,234,.25) end
 local selectLabel=label(f,22,-366,600,'Selected Player: none')
 selectLabel:SetFontObject('GameFontNormal')
-for i=1,10 do
+for i=1,6 do
  local y=-140-(i-1)*21
  if i%2==0 then
   local bg=f:CreateTexture(nil,'BACKGROUND')
@@ -169,7 +187,7 @@ function R.RefreshPlayerManagement()
  gm:SetText('Game Master: '..(R.GameMasterName()~='' and R.GameMasterName() or 'none')..
    (R.IsGameMaster() and '  (You have administrative control)' or '  (Read only)'))
  local found=false
- for i=1,10 do
+ for i=1,6 do
   local p=R.G.players[i]
   local row=rows[i]
   row.name:SetText(p and p.name or '')

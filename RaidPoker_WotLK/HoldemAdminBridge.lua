@@ -33,13 +33,13 @@ local function refresh()
  local list={}
  for name in pairs(N.members or {}) do if raidMember(name) then list[#list+1]=name end end
  table.sort(list)
- for i=1,10 do
+ for i=1,6 do
   local b=memberButtons[i];local name=list[i]
   b:SetText(name and ((selected==name and '> ' or '')..name) or '[No member]')
   if name then b:Enable() else b:Disable() end;b.target=name
  end
  chosen:SetText('Selected successor: '..tostring(selected or '-'))
- for i=1,10 do
+ for i=1,6 do
   local s=M.seats[i]
   rows[i]:SetText(i..'. '..(s and (s.name..' | '..tostring(s.stack or 0)..'s | '..(s.sittingOut and 'SIT OUT' or 'IN')) or '[Empty]'))
  end
@@ -56,7 +56,7 @@ function A.BroadcastSeats()
  local serial=tostring(snapshotSerial)
  send('B|'..N.session..'|'..serial)
  for name in pairs(N.members or {}) do if safeName(name) and raidMember(name) then send('J|'..N.session..'|'..name) end end
- for i=1,10 do send(encodeSeat(i,M.seats[i])) end
+ for i=1,6 do send(encodeSeat(i,M.seats[i])) end
  send('E|'..N.session..'|'..serial)
  log('SEATS SYNCED');refresh();return true
 end
@@ -93,7 +93,7 @@ ev:SetScript('OnEvent',function(self,event,...)
   if not idle() or M.active or not incoming or incoming.from~=sender then return end
   local idx,name,stack,out=rest:match('^(%d+)|([^|]+)|(%d+)|([01])$')
   idx=tonumber(idx);stack=tonumber(stack)
-  if not idx or idx<1 or idx>10 or incoming.seen[idx] or not stack or stack>100000000 then
+  if not idx or idx<1 or idx>6 or incoming.seen[idx] or not stack or stack>100000000 then
    incoming.invalid=true;return
   end
   incoming.seen[idx]=true;incoming.received=incoming.received+1
@@ -112,7 +112,7 @@ ev:SetScript('OnEvent',function(self,event,...)
   if not incoming or incoming.from~=sender or incoming.serial~=rest or incoming.invalid or incoming.received~=10 then return end
   -- Reject non-contiguous seats; the engine uses ipairs and # on seat arrays.
   local packed={};local gap=false
-  for i=1,10 do
+  for i=1,6 do
    local seat=incoming.seats[i]
    if seat then
     if gap then incoming=nil;return end
@@ -148,7 +148,7 @@ local function build()
  label(panel,'JOINED RAID MEMBERS',20,-88,260)
  label(panel,'NETWORK SEATS / VIRTUAL BALANCES',330,-88,300)
  memberButtons={};rows={}
- for i=1,10 do
+ for i=1,6 do
   memberButtons[i]=button(panel,'',20,-110-(i-1)*28,260,function(self)selected=self.target;refresh()end)
   rows[i]=label(panel,'',330,-114-(i-1)*28,300)
  end

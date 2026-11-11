@@ -60,7 +60,7 @@ function R.OpenBarrensSeatInspector(seat)
   f:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=24,insets={left=8,right=8,top=8,bottom=8}})
   local heading=text(f,18,-20,360);heading:SetText("THE BARRENS HOLD'EM - SEAT INSPECTOR")
   button(f,'X',395,-12,30,function()f:Hide()end)
-  for i=1,10 do
+  for i=1,6 do
    local seatIndex=i
    local x=18+((i-1)%5)*82
    local y=-56-math.floor((i-1)/5)*31
@@ -71,7 +71,7 @@ function R.OpenBarrensSeatInspector(seat)
   button(f,'Player Mgmt',120,-414,130,function()if R.OpenBarrensManagement then R.OpenBarrensManagement()end end)
   button(f,'Operations',260,-414,140,function()if R.OpenBarrensOperations then R.OpenBarrensOperations()end end)
  end
- selected=math.max(1,math.min(10,tonumber(seat) or selected or 1))
+ selected=math.max(1,math.min(6,tonumber(seat) or selected or 1))
  f:Show();f:Raise();refresh()
 end
 SLASH_BARRENSINSPECT1='/holdeminspect'

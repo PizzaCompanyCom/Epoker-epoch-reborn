@@ -172,7 +172,7 @@ local function init()
  themeImage:SetPoint('BOTTOMRIGHT',main,'BOTTOMRIGHT',-12,12)
  themeImage:SetTexCoord(0,1,0,1)
  -- Theme application deferred until complete initialization.
- main:SetScript('OnHide',function() if settings then settings:Hide() end if R.TableFrame then R.TableFrame:Hide() end if R.PlayerManagementFrame then R.PlayerManagementFrame:Hide() end if R.StatisticsFrame then R.StatisticsFrame:Hide() end if R.RankingsFrame then R.RankingsFrame:Hide() end if R.RulesFrame then R.RulesFrame:Hide() end if R.HelpFrame then R.HelpFrame:Hide() end if RaidPokerBettingActivity then RaidPokerBettingActivity:Hide() end end)
+ main:SetScript('OnHide',function() if settings then settings:Hide() end if R.PlayerManagementFrame then R.PlayerManagementFrame:Hide() end if R.StatisticsFrame then R.StatisticsFrame:Hide() end if R.RankingsFrame then R.RankingsFrame:Hide() end if R.RulesFrame then R.RulesFrame:Hide() end if R.HelpFrame then R.HelpFrame:Hide() end if RaidPokerBettingActivity then RaidPokerBettingActivity:Hide() end end)
  local t=main:CreateFontString(nil,'OVERLAY','GameFontNormalLarge');t:SetPoint('TOP',main,'TOP',0,-19);t:SetText('')
  button(main,'X',27,23,755,-15,function() main:Hide() end)
 

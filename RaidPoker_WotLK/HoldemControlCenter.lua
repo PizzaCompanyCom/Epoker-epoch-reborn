@@ -71,7 +71,7 @@ local function build()
  uiText(window,20,-144,300,'MULTIPLAYER SEATS','GameFontNormal')
  uiText(window,349,-144,280,'GAME MASTER ACTIONS','GameFontNormal')
  seatButtons={};gmButtons={}
- for i=1,10 do
+ for i=1,6 do
   local idx=i
   seatButtons[i]=btn(window,'',20,-168-(i-1)*28,300,function()selected=idx;refresh()end)
  end

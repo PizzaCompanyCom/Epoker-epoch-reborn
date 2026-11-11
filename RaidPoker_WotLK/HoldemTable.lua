@@ -74,6 +74,7 @@ local function clearCoins()
 end
 
 local f,phase,potText,turnText,boardCards,actionButtons,raiseBox,historyText,optionsText,themeButton,surface,rim,sideText,themeLines,potGold,potSilver,potGoldIcon,potSilverIcon
+local personalCards,personalTitle,potStackGold,potStackSilver,winnerPanel,winnerText,phaseFooter
 local function money(amount)
  amount=math.max(0,math.floor(tonumber(amount) or 0))
  local g=math.floor(amount/100)
@@ -193,7 +194,9 @@ local function makeSeat(parent,i,x,y)
  local bg=rect(seat,132,73,0.07,0.10,0.11,0.35);bg:SetPoint('CENTER')
  local glow=rect(seat,142,83,0.18,0.67,0.29,0.32);glow:SetPoint('CENTER');glow:Hide();glow:SetDrawLayer('BACKGROUND',-1)
  local name=label(seat,'','GameFontNormalSmall');name:SetPoint('TOP',seat,'TOP',0,-5);name:SetWidth(104)
- local status=label(seat,'','GameFontHighlightSmall');status:SetPoint('TOP',seat,'TOP',0,-22);status:SetWidth(132);status:SetJustifyH('CENTER')
+ local status=label(seat,'','GameFontNormalLarge');status:SetPoint('TOP',seat,'TOP',8,-22);status:SetWidth(115);status:SetJustifyH('CENTER')
+ local moneyIcon=seat:CreateTexture(nil,'OVERLAY');moneyIcon:SetTexture('Interface\\MoneyFrame\\UI-GoldIcon')
+ moneyIcon:SetSize(16,16);moneyIcon:SetPoint('RIGHT',status,'LEFT',2,0)
  local c1=card(seat,23,32);c1:SetPoint('BOTTOM',seat,'BOTTOM',-15,4)
  local c2=card(seat,23,32);c2:SetPoint('BOTTOM',seat,'BOTTOM',15,4)
  local portrait=seat:CreateTexture(nil,'ARTWORK')
@@ -206,7 +209,7 @@ local function makeSeat(parent,i,x,y)
  local winnerGlow=rect(seat,142,83,0.95,0.74,0.18,0.38)
  winnerGlow:SetPoint('CENTER');winnerGlow:SetDrawLayer('BACKGROUND',-1);winnerGlow:Hide()
  local badge=label(seat,'','GameFontNormalSmall');badge:SetPoint('TOPRIGHT',seat,'TOPRIGHT',-4,-4)
- local winnerLabel=label(seat,'WINNER','GameFontNormalSmall');winnerLabel:SetPoint('BOTTOMRIGHT',seat,'BOTTOMRIGHT',-3,4);winnerLabel:SetTextColor(1,0.84,0.23);winnerLabel:Hide()
+ local winnerLabel=label(seat,'','GameFontNormalSmall');winnerLabel:Hide()
  local stateLabel=label(seat,'','GameFontNormalSmall');stateLabel:SetPoint('BOTTOMLEFT',seat,'BOTTOMLEFT',3,4);stateLabel:Hide()
  local actionLayer=CreateFrame('Frame',nil,seat)
  actionLayer:SetAllPoints(seat);actionLayer:SetFrameLevel(seat:GetFrameLevel()+12)
@@ -222,21 +225,40 @@ local function makeSeat(parent,i,x,y)
  actionLayer:Hide()
  local timerBG=rect(seat,130,3,0.13,0.13,0.13,0.9);timerBG:SetPoint('BOTTOM',seat,'BOTTOM',0,-3);timerBG:Hide()
  local timerFill=rect(seat,130,3,0.20,0.9,0.32,0.95);timerFill:SetPoint('LEFT',timerBG,'LEFT');timerFill:Hide()
- return {frame=seat,bg=bg,glow=glow,winnerGlow=winnerGlow,portrait=portrait,name=name,status=status,cards={c1,c2},badge=badge,winnerLabel=winnerLabel,stateLabel=stateLabel,timerBG=timerBG,timerFill=timerFill,actionCover=actionCover,actionLabel=actionLabel,actionLayer=actionLayer}
+ return {frame=seat,bg=bg,glow=glow,winnerGlow=winnerGlow,portrait=portrait,name=name,status=status,moneyIcon=moneyIcon,cards={c1,c2},badge=badge,winnerLabel=winnerLabel,stateLabel=stateLabel,timerBG=timerBG,timerFill=timerFill,actionCover=actionCover,actionLabel=actionLabel,actionLayer=actionLayer}
 end
 local function feedback(ok,msg)
  if not ok and R.Print then R.Print('Barrens Holdem: '..(msg or 'Invalid action')) end
 end
+
+local function arrangePairedWindows(tableFrame, generalFrame, tableScale, generalScale)
+ if not tableFrame or not generalFrame or not tableFrame:IsShown() or not generalFrame:IsShown() then return end
+ local l1,r1=tableFrame:GetLeft(),tableFrame:GetRight()
+ local l2,r2=generalFrame:GetLeft(),generalFrame:GetRight()
+ if l1 and r1 and l2 and r2 and (r1<=l2 or r2<=l1) then return end
+ local screenW=UIParent:GetWidth()
+ local ratio=math.min(1,(screenW-40)/(tableFrame:GetWidth()*tableScale+generalFrame:GetWidth()*generalScale+20))
+ local ts=tableScale*ratio;local gs=generalScale*ratio
+ tableFrame:SetScale(ts);generalFrame:SetScale(gs)
+ local total=tableFrame:GetWidth()*ts+generalFrame:GetWidth()*gs+20
+ local left=(screenW-total)/2
+ tableFrame:ClearAllPoints();tableFrame:SetPoint('BOTTOMLEFT',UIParent,'BOTTOMLEFT',left/ts,(UIParent:GetHeight()/2-tableFrame:GetHeight()*ts/2)/ts)
+ generalFrame:ClearAllPoints();generalFrame:SetPoint('BOTTOMLEFT',UIParent,'BOTTOMLEFT',(left+tableFrame:GetWidth()*ts+20)/gs,(UIParent:GetHeight()/2-generalFrame:GetHeight()*gs/2)/gs)
+end
+
 local function build()
  if f then return end
  f=CreateFrame('Frame','RaidPokerBarrensTable',UIParent)
  f:SetSize(940,570);f:SetPoint('CENTER');f:SetFrameStrata('DIALOG');f:SetMovable(true);f:EnableMouse(true)
  f:RegisterForDrag('LeftButton');f:SetClampedToScreen(true)
- f:SetScript('OnDragStart',function(self)self:StartMoving()end)
+ f:SetScript('OnDragStart',function(self)self:Raise();self:StartMoving()end)
+ f:HookScript('OnMouseDown',function(self)self:Raise()end)
  f:SetScript('OnDragStop',function(self)self:StopMovingOrSizing(); if RaidPokerWotLKDB then RaidPokerWotLKDB.barrensTablePosition={self:GetCenter()} end end)
  if RaidPokerWotLKDB and RaidPokerWotLKDB.barrensTablePosition then local p=RaidPokerWotLKDB.barrensTablePosition; if p[1] and p[2] then f:ClearAllPoints();f:SetPoint('CENTER',UIParent,'BOTTOMLEFT',p[1],p[2]) end end
- f:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=24,insets={left=8,right=8,top=8,bottom=8}})
- local title=label(f,"THE BARRENS HOLD'EM",'GameFontNormalLarge');title:SetPoint('TOP',f,'TOP',0,-17)
+ f:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=false,edgeSize=24,insets={left=8,right=8,top=8,bottom=8}})
+ f:SetBackdropColor(0.055,0.075,0.065,1)
+ f:SetBackdropBorderColor(0.65,0.50,0.27,1)
+ -- Header title intentionally omitted; controls use this space.
  button(f,'X',30,25,function()f:Hide()end):SetPoint('TOPRIGHT',f,'TOPRIGHT',-15,-13)
  local felt=CreateFrame('Frame',nil,f);felt:SetSize(810,440);felt:SetPoint('TOP',f,'TOP',0,-55)
  feltArea=felt;felt:SetScript('OnUpdate',advanceEffects)
@@ -248,30 +270,42 @@ local function build()
  rim=rect(felt,818,448,0.34,0.24,0.12,0.7);rim:SetPoint('CENTER');rim:SetDrawLayer('BACKGROUND',-2)
  themeLines={}
  for i=1,12 do local line=rect(felt,794,1,0.07,0.04,0.02,0.16);line:SetPoint('TOP',felt,'TOP',0,-12-i*32);themeLines[i]=line end
- -- Larger community cards, shifted left to leave room for the pot display.
- phase=label(felt,'','GameFontNormal');phase:SetPoint('TOP',felt,'TOP',-105,-113)
- turnText=label(felt,'','GameFontHighlight');turnText:SetPoint('TOP',felt,'TOP',-105,-140);turnText:SetWidth(390);turnText:SetJustifyH('CENTER');turnText:SetFont('Fonts\\FRIZQT__.TTF',19,'OUTLINE')
+ -- The community board stays centered. The local player's private cards have
+ -- their own row underneath; no opponent's private cards are exposed here.
+ phase=label(felt,'','GameFontNormalSmall');phase:Hide()
+ turnText=label(felt,'','GameFontHighlight');turnText:SetPoint('CENTER',felt,'CENTER',0,143);turnText:SetWidth(460);turnText:SetJustifyH('CENTER');turnText:SetFont('Fonts\\FRIZQT__.TTF',17,'OUTLINE')
  boardCards={}
- for i=1,5 do local c=card(felt,76,106);c:SetPoint('CENTER',felt,'CENTER',-210+(i-1)*84,0);boardCards[i]=c end
- -- Dedicated pot area: native 3.3.5a coin textures, no letter placeholders.
- local potPanel=CreateFrame('Frame',nil,felt);potPanel:SetSize(181,180);potPanel:SetPoint('CENTER',felt,'CENTER',293,0)
- coinTarget={293,0}
- -- Pot is displayed directly on the felt
- -- No opaque pot border
- local potTitle=label(potPanel,'POT','GameFontNormal');potTitle:SetPoint('TOP',potPanel,0,-8)
- potText=label(potPanel,'','GameFontNormalSmall');potText:SetPoint('TOP',potPanel,0,-29);potText:SetWidth(174)
- potGoldIcon=potPanel:CreateTexture(nil,'ARTWORK');potGoldIcon:SetTexture('Interface\\MoneyFrame\\UI-GoldIcon');potGoldIcon:SetSize(18,18);potGoldIcon:SetPoint('TOPLEFT',potPanel,18,-55)
- potGold=label(potPanel,'0','GameFontHighlightSmall');potGold:SetPoint('LEFT',potGoldIcon,'RIGHT',5,0)
- potSilverIcon=potPanel:CreateTexture(nil,'ARTWORK');potSilverIcon:SetTexture('Interface\\MoneyFrame\\UI-SilverIcon');potSilverIcon:SetSize(18,18);potSilverIcon:SetPoint('TOPLEFT',potPanel,95,-55)
- potSilver=label(potPanel,'0','GameFontHighlightSmall');potSilver:SetPoint('LEFT',potSilverIcon,'RIGHT',5,0)
- sideText=label(potPanel,'','GameFontHighlightSmall');sideText:SetPoint('TOP',potPanel,0,-88);sideText:SetWidth(171);sideText:SetJustifyH('CENTER')
+ for i=1,5 do local c=card(felt,65,91);c:SetPoint('CENTER',felt,'CENTER',-144+(i-1)*72,32);boardCards[i]=c end
+ personalTitle=label(felt,'YOUR HOLE CARDS','GameFontNormalSmall');personalTitle:SetPoint('CENTER',felt,'CENTER',0,-35)
+ personalCards={}
+ for i=1,2 do local c=card(felt,58,80);c:SetPoint('CENTER',felt,'CENTER',-34+(i-1)*68,-93);personalCards[i]=c end
+ -- Single, compact pot panel above the board; gold and silver stacks grow
+ -- vertically without extending into the community cards.
+ local potPanel=CreateFrame('Frame',nil,felt);potPanel:SetSize(260,50);potPanel:SetPoint('CENTER',felt,'CENTER',0,189)
+ coinTarget={0,174}
+ local potTitle=label(potPanel,'POT:','GameFontNormalLarge');potTitle:SetPoint('LEFT',potPanel,'LEFT',10,0)
+ potText=label(potPanel,'0s','GameFontNormalLarge');potText:SetPoint('LEFT',potTitle,'RIGHT',5,0)
+ potGoldIcon=potPanel:CreateTexture(nil,'ARTWORK');potGoldIcon:SetTexture('Interface\\MoneyFrame\\UI-GoldIcon');potGoldIcon:SetSize(15,15);potGoldIcon:SetPoint('LEFT',potPanel,'LEFT',172,0);potGoldIcon:Hide()
+ potSilverIcon=potPanel:CreateTexture(nil,'ARTWORK');potSilverIcon:SetTexture('Interface\\MoneyFrame\\UI-SilverIcon');potSilverIcon:SetSize(15,15);potSilverIcon:SetPoint('LEFT',potPanel,'LEFT',211,0);potSilverIcon:Hide()
+ potGold=label(potPanel,'','GameFontHighlightSmall');potGold:Hide()
+ potSilver=label(potPanel,'','GameFontHighlightSmall');potSilver:Hide()
+ potStackGold={};potStackSilver={}
+ for i=1,4 do
+  local gt=potPanel:CreateTexture(nil,'OVERLAY');gt:SetTexture('Interface\\MoneyFrame\\UI-GoldIcon');gt:SetSize(17,17);gt:SetPoint('BOTTOMLEFT',potPanel,'BOTTOMLEFT',169+(i-1)%2*10,11+math.floor((i-1)/2)*9);gt:Hide();potStackGold[i]=gt
+  local st=potPanel:CreateTexture(nil,'OVERLAY');st:SetTexture('Interface\\MoneyFrame\\UI-SilverIcon');st:SetSize(17,17);st:SetPoint('BOTTOMLEFT',potPanel,'BOTTOMLEFT',211+(i-1)%2*10,11+math.floor((i-1)/2)*9);st:Hide();potStackSilver[i]=st
+ end
+ sideText=label(felt,'','GameFontHighlightSmall');sideText:SetPoint('CENTER',felt,'CENTER',0,-156);sideText:SetWidth(370);sideText:SetJustifyH('CENTER')
+ -- Dedicated announcement overlay: above the card frames, not behind them.
+ winnerPanel=CreateFrame('Frame',nil,felt);winnerPanel:SetSize(395,65);winnerPanel:SetPoint('CENTER',felt,'CENTER',0,38);winnerPanel:SetFrameLevel(felt:GetFrameLevel()+12)
+ local winnerBG=winnerPanel:CreateTexture(nil,'BACKGROUND');winnerBG:SetAllPoints(winnerPanel);winnerBG:SetTexture('Interface\\Buttons\\WHITE8X8');winnerBG:SetVertexColor(0.10,0.055,0.025,0.94)
+ winnerText=label(winnerPanel,'','GameFontNormalLarge');winnerText:SetPoint('CENTER');winnerText:SetWidth(380);winnerText:SetJustifyH('CENTER');winnerPanel:Hide()
+ phaseFooter=label(f,'','GameFontNormalLarge');phaseFooter:SetPoint('BOTTOM',f,'BOTTOM',0,22);phaseFooter:SetFont('Fonts\\FRIZQT__.TTF',18,'OUTLINE')
  seatWidgets={}
- -- Ten 138px-wide seats at 150px intervals, with no horizontal overlap.
+ -- Six seats, three on either side, leaving the board and pot unobstructed.
  -- Preserve the four test players at the outer corners.
- local coords={{-300,-154},{-300,154},{300,154},{300,-154},{-150,154},{0,154},{150,154},{-150,-154},{0,-154},{150,-154}}
- for i=1,10 do seatWidgets[i]=makeSeat(felt,i,coords[i][1],coords[i][2]) end
- themeButton=button(f,'Theme',170,25,function()themeIndex=(themeIndex%#themes)+1;applyTheme()end)
- themeButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-46,-17)
+ local coords={{-305,-145},{-305,0},{-305,145},{305,-145},{305,0},{305,145}}
+ for i=1,6 do seatWidgets[i]=makeSeat(felt,i,coords[i][1],coords[i][2]) end
+ -- Theme switch is created inside Settings Table below.
  applyTheme()
  -- Main window is opened independently; no redundant navigation button
  local optionsButton=button(f,'Effects',94,23,function()
@@ -279,12 +313,53 @@ local function build()
    if effects.options:IsShown() then effects.options:Hide() else effects.options:Show() end
   end
  end)
- optionsButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-222,-17)
- local op=CreateFrame('Frame',nil,f)
- op:SetSize(238,385);op:SetPoint('TOPRIGHT',f,'TOPRIGHT',-20,-47)
+ optionsButton:SetPoint('TOPRIGHT',f,'TOPRIGHT',-61,-17)
+ optionsButton:SetText('Settings Table')
+ optionsButton:SetWidth(130)
+ local general=button(f,'Open General',125,25,function()if R.OpenBarrensControls then R.OpenBarrensControls() elseif _G.RaidPokerBarrensGameControls then _G.RaidPokerBarrensGameControls:Show() end
+  arrangePairedWindows(f,_G.RaidPokerBarrensGameControls,(RaidPokerWotLKDB and RaidPokerWotLKDB.barrensTableScale) or 1,(RaidPokerWotLKDB and RaidPokerWotLKDB.barrensWindowScale) or 1) end)
+ general:SetPoint('TOPRIGHT',f,'TOPRIGHT',-200,-16)
+ local closeBots=button(f,'Close Bots',115,25,function()if R.BarrensCloseSoloGame then local ok,err=R.BarrensCloseSoloGame();if not ok and R.Print then R.Print(err or 'Unable to close bots') end end end)
+ closeBots:SetPoint('TOPLEFT',f,'TOPLEFT',15,-16)
+  local soloBots=button(f,'Solo Bots',115,25,function()
+   if R.OpenBarrensSoloDebug then R.OpenBarrensSoloDebug() end
+  end)
+  soloBots:SetPoint('TOPLEFT',f,'TOPLEFT',140,-16)
+ local startGame=button(f,'Start Game',130,25,function()
+  local ok,err
+  if R.BarrensUnifiedStart then ok,err=R.BarrensUnifiedStart() elseif H.StartPreviewHand then ok,err=H.StartPreviewHand() end
+  if ok==false and R.Print then R.Print(err or 'Cannot start game') end
+ end)
+ startGame:SetPoint('TOPRIGHT',f,'TOPRIGHT',-332,-16)
+ local function headerIcon(b,texture)
+  local t=b:CreateTexture(nil,'OVERLAY')
+  t:SetTexture(texture);t:SetSize(16,16);t:SetPoint('LEFT',b,'LEFT',5,0)
+  b:SetText('   '..b:GetText())
+ end
+ headerIcon(soloBots,'Interface\\Icons\\INV_Misc_Dice_02')
+ headerIcon(closeBots,'Interface\\Icons\\Ability_Rogue_FeignDeath')
+ headerIcon(startGame,'Interface\\Icons\\INV_Misc_Coin_01')
+ headerIcon(general,'Interface\\Icons\\INV_Misc_Book_09')
+ headerIcon(optionsButton,'Interface\\Icons\\Trade_Engineering')
+ for _,b in ipairs({optionsButton,general,closeBots,soloBots,startGame}) do
+  b:SetFrameLevel(f:GetFrameLevel()+60)
+  b:HookScript('OnMouseDown',function()f:Raise()end)
+ end
+ local op=CreateFrame('Frame',nil,UIParent)
+ -- Anchor the settings to UIParent, not the scaled table. Otherwise the slider moves under the mouse while dragging.
+	op:SetSize(270,540);op:SetPoint('CENTER',UIParent,'CENTER',590,0)
  op:SetFrameStrata('FULLSCREEN_DIALOG')
  op:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=20,insets={left=6,right=6,top=6,bottom=6}})
+ local closeSettings=button(op,'X',26,24,function()op:Hide()end)
+ closeSettings:SetPoint('TOPRIGHT',op,'TOPRIGHT',-12,-12)
+ local scaleText=label(op,'Table Scale: 100%','GameFontHighlightSmall');scaleText:SetPoint('TOP',op,'TOP',0,-389)
+ local scale=CreateFrame('Slider',nil,op,'OptionsSliderTemplate');scale:SetWidth(170);scale:SetHeight(14);scale:SetPoint('TOP',op,'TOP',0,-413);scale:SetMinMaxValues(0.7,1.3);scale:SetValueStep(0.05)
+ scale:SetScript('OnValueChanged',function(self,v) v=math.max(0.7,math.min(1.3,math.floor(v*20+0.5)/20));if RaidPokerWotLKDB then RaidPokerWotLKDB.barrensTableScale=v end;f:SetScale(v);scaleText:SetText('Table Scale: '..math.floor(v*100+0.5)..'%') end)
+ scale:SetValue((RaidPokerWotLKDB and RaidPokerWotLKDB.barrensTableScale) or 1)
  local opTitle=label(op,'POKER VISUAL EFFECTS','GameFontNormal');opTitle:SetPoint('TOP',op,0,-15)
+ themeButton=button(op,'Theme',210,23,function()themeIndex=(themeIndex%#themes)+1;applyTheme()end)
+ themeButton:SetPoint('TOP',op,'TOP',0,-483)
+ applyTheme()
  local opts={{'bet','Bet Effects'},{'turn','Active Turn Glow'},{'winner','Winner Effects'},{'portraits','Player Portraits'},{'sound','Sound Effects'},{'timer','Turn Timer'},{'announcement','Winner Announcement'}}
  for j,opt in ipairs(opts) do
   local key=opt[1];local b=button(op,'',200,25,function(self)
@@ -297,12 +372,13 @@ local function build()
  end
  local durationText=label(op,'Coin Duration: 0.9s','GameFontHighlightSmall');durationText:SetPoint('TOP',op,'TOP',0,-260)
  local duration=CreateFrame('Slider',nil,op,'OptionsSliderTemplate');duration:SetWidth(180);duration:SetHeight(16);duration:SetPoint('TOP',op,'TOP',0,-280);duration:SetMinMaxValues(0.4,1.6);duration:SetValueStep(0.1);duration:SetValue(tonumber(prefs().coinDuration) or 0.9)
- duration:SetScript('OnValueChanged',function(self,v) local rounded=math.floor(v*10+0.5)/10;prefs().coinDuration=rounded;durationText:SetText(string.format('Coin Duration: %.1fs',rounded)) end)
+ duration:SetScript('OnValueChanged',function(self,v) local rounded=math.floor(v*10+0.5)/6;prefs().coinDuration=rounded;durationText:SetText(string.format('Coin Duration: %.1fs',rounded)) end)
  local glowText=label(op,'Glow Intensity: 70%','GameFontHighlightSmall');glowText:SetPoint('TOP',op,'TOP',0,-314)
  local glowSlider=CreateFrame('Slider',nil,op,'OptionsSliderTemplate');glowSlider:SetWidth(180);glowSlider:SetHeight(16);glowSlider:SetPoint('TOP',op,'TOP',0,-333);glowSlider:SetMinMaxValues(20,100);glowSlider:SetValueStep(10);glowSlider:SetValue(tonumber(prefs().glowIntensity) or 70)
- glowSlider:SetScript('OnValueChanged',function(self,v) local rounded=math.floor(v/10+0.5)*10;prefs().glowIntensity=rounded;glowText:SetText('Glow Intensity: '..rounded..'%') end)
+ glowSlider:SetScript('OnValueChanged',function(self,v) local rounded=math.floor(v/6+0.5)*10;prefs().glowIntensity=rounded;glowText:SetText('Glow Intensity: '..rounded..'%') end)
  effects.options=op;op:Hide()
- optionsText=label(f,'LOCAL PREVIEW | SUITS: S Spades, H Hearts, D Diamonds, C Clubs','GameFontHighlightSmall');optionsText:SetPoint('TOP',f,'TOP',0,-527)
+ f:HookScript('OnHide',function()op:Hide()end)
+ -- Local preview caption removed from Poker Table.
   -- Visual poker table only: betting and management belong to the main game window.
  f:Hide()
 end
@@ -316,13 +392,13 @@ local function update()
   for i,p in ipairs(s.players) do
    local old=prev.players[i]
    if old and (p.committed or 0)>(old.committed or 0) then
-    local xy=({{-300,-154},{-300,154},{300,154},{300,-154},{-150,154},{0,154},{150,154},{-150,-154},{0,-154},{150,-154}})[i]
+    local xy=({{-305,-145},{-305,0},{-305,145},{305,-145},{305,0},{305,145}})[i]
     if xy then startCoins(xy[1],xy[2],coinTarget[1],coinTarget[2],p.committed-old.committed) end
    end
   end
   if prev.phase~='SHOWDOWN' and s.phase=='SHOWDOWN' then
    for i,gain in pairs(s.winners or {}) do
-    local xy=({{-300,-154},{-300,154},{300,154},{300,-154},{-150,154},{0,154},{150,154},{-150,-154},{0,-154},{150,-154}})[i]
+    local xy=({{-305,-145},{-305,0},{-305,145},{305,-145},{305,0},{305,145}})[i]
     if xy then startCoins(coinTarget[1],coinTarget[2],xy[1],xy[2],gain) end
    end
    if next(s.winners or {}) then playSound('win') end
@@ -331,7 +407,7 @@ local function update()
   clearCoins()
   for i,p in ipairs(s.players) do
    if (p.committed or 0)>0 then
-    local xy=({{-300,-154},{-300,154},{300,154},{300,-154},{-150,154},{0,154},{150,154},{-150,-154},{0,-154},{150,-154}})[i]
+    local xy=({{-305,-145},{-305,0},{-305,145},{305,-145},{305,0},{305,145}})[i]
     if xy then startCoins(xy[1],xy[2],coinTarget[1],coinTarget[2],p.committed) end
    end
   end
@@ -339,11 +415,17 @@ local function update()
  effects.previous={handNumber=s.handNumber,phase=s.phase,players={},winners=s.winners}
  for i,p in ipairs(s.players) do effects.previous.players[i]={committed=p.committed or 0} end
  for key,v in pairs(effects.buttons) do v.button:SetText(v.label..': '..(prefs()[key] and 'ON' or 'OFF')) end
- phase:SetText('HAND '..s.handNumber..'  •  '..s.phase)
+ phaseFooter:SetText('Hand '..tostring(s.handNumber or 0)..'  |  '..tostring(s.phase or 'LOBBY'))
  local total=paidPot(s)
- potText:SetText(s.phase=='SHOWDOWN' and 'LAST POT (PAID)' or 'CURRENT POT')
- potGold:SetText(tostring(math.floor(total/100)))
- potSilver:SetText(tostring(total%100))
+ potText:SetText(money(total))
+ local gold=math.floor(total/100)
+ local silver=total%100
+ local goldCount=gold>0 and math.min(4,1+math.floor(math.log(gold)/math.log(4))) or 0
+ local silverCount=silver>0 and math.min(4,1+math.floor(silver/25)) or 0
+ for i=1,4 do
+  if i<=goldCount then potStackGold[i]:Show() else potStackGold[i]:Hide() end
+  if i<=silverCount then potStackSilver[i]:Show() else potStackSilver[i]:Hide() end
+ end
  local parts={}
  if s.phase=='SHOWDOWN' then
   for j,p in ipairs(s.sidePots or {}) do
@@ -352,13 +434,23 @@ local function update()
  end
  sideText:SetText(table.concat(parts,'\n'))
  if s.phase=='SHOWDOWN' then
-  turnText:SetText(showdownHandLabel(s) or 'SHOWDOWN')
+  turnText:SetText('SHOWDOWN')
   turnText:SetTextColor(1,0.78,0.18)
  else
   turnText:SetText(s.actionSeat and s.players[s.actionSeat] and ('TURN: '..s.players[s.actionSeat].name) or '')
   turnText:SetTextColor(1,0.95,0.75)
  end
  for i=1,5 do boardCards[i]:SetCard(s.board[i],false) end
+ local localSeat=nil
+ for i,p in ipairs(s.players) do if p.name==UnitName('player') then localSeat=i;break end end
+ local ownHole=localSeat and R.BarrensUnifiedHole and R.BarrensUnifiedHole(localSeat,s) or nil
+ local hasOwnCards=ownHole and ownHole[1] and ownHole[2]
+ for i=1,2 do
+  local value=hasOwnCards and ownHole[i] or nil
+  personalCards[i]:SetCard(value and (type(value)=='string' and value or H.CardLabel(value)) or nil,false)
+  if hasOwnCards then personalCards[i]:Show() else personalCards[i]:Hide() end
+ end
+ if hasOwnCards then personalTitle:Show() else personalTitle:Hide() end
  for i,w in ipairs(seatWidgets) do
   local p=s.players[i]
   if p then
@@ -367,7 +459,7 @@ local function update()
    if prefs().winner and s.phase=='SHOWDOWN' and s.winners and s.winners[i] then w.winnerGlow:Show() else w.winnerGlow:Hide() end
    if prefs().portraits then w.portrait:Show() else w.portrait:Hide() end
    local didWin=prefs().winner and s.phase=='SHOWDOWN' and s.winners and (tonumber(s.winners[i]) or 0)>0
-   if didWin then w.winnerLabel:Show() else w.winnerLabel:Hide() end
+   w.winnerLabel:Hide()
    if p.folded then w.stateLabel:SetText('FOLDED');w.stateLabel:SetTextColor(0.65,0.65,0.65);w.stateLabel:Show();w.bg:SetAlpha(0.45)
    elseif p.allIn then w.stateLabel:SetText('ALL-IN');w.stateLabel:SetTextColor(1,0.75,0.18);w.stateLabel:Show();w.bg:SetAlpha(1)
    else w.stateLabel:Hide();w.bg:SetAlpha(1) end
@@ -396,7 +488,10 @@ local function update()
    w.badge:SetText(tags)
    local status=(p.folded and ' FOLD' or (p.allIn and ' ALL-IN' or ''))
       -- Keep status inside its own seat, even with a large stack.
-   w.status:SetText(money(p.stack)..' | Bet '..money(p.street)..status..(s.winners[i] and (' WIN +'..money(s.winners[i])) or ''))
+   local stack=math.max(0,math.floor(tonumber(p.stack) or 0))
+   w.status:SetText(money(stack))
+   w.moneyIcon:SetTexture(stack<100 and 'Interface\\MoneyFrame\\UI-SilverIcon' or 'Interface\\MoneyFrame\\UI-GoldIcon')
+   w.moneyIcon:Show()
    local action=R.HF19ActionFor and R.HF19ActionFor('HOLDEM',p.name,s.log,s.handNumber)
    if action then
     w.actionLabel:SetText(action);w.actionLabel:SetTextColor(R.HF19ActionColor(action));w.actionUntil=R.HF19ActionExpiry and R.HF19ActionExpiry('HOLDEM',p.name) or (GetTime()+3);w.actionLayer:Show()
@@ -406,23 +501,31 @@ local function update()
    if p.name~=UnitName('player') and s.phase~='SHOWDOWN' then hole=nil end
    for k=1,2 do w.cards[k]:SetCard(hole and hole[k] and (type(hole[k])=='string' and hole[k] or H.CardLabel(hole[k])) or nil,not hole and (p.dealt or (s.phase~='LOBBY' and s.phase~='SHOWDOWN'))) end
   else
-   w.frame:Hide();w.actionLayer:Hide();w.glow:Hide();w.winnerGlow:Hide();w.portrait:Hide();w.winnerLabel:Hide();w.stateLabel:Hide();w.timerBG:Hide();w.timerFill:Hide();w.name:SetText('');w.status:SetText('');w.badge:SetText('')
+   w.frame:Hide();w.moneyIcon:Hide();w.actionLayer:Hide();w.glow:Hide();w.winnerGlow:Hide();w.portrait:Hide();w.winnerLabel:Hide();w.stateLabel:Hide();w.timerBG:Hide();w.timerFill:Hide();w.name:SetText('');w.status:SetText('');w.badge:SetText('')
    for k=1,2 do w.cards[k]:SetCard(nil,false) end
   end
  end
- if not effects.announcement then
-  effects.announcement=label(feltArea,'','GameFontNormalSmall')
-  effects.announcement:SetPoint('CENTER',feltArea,'CENTER',-100,-72)
-  effects.announcement:SetWidth(470)
- end
+ -- Exactly one winner announcement. Use the actual winning ranks for each
+ -- paid winner, and keep multi-winner / split-pot results visible.
  if prefs().announcement and s.phase=='SHOWDOWN' and next(s.winners or {}) then
   local announcements={}
   for i,gain in pairs(s.winners) do
-   if tonumber(gain) and gain>0 and s.players[i] then announcements[#announcements+1]=s.players[i].name..' wins '..money(gain) end
+   if (tonumber(gain) or 0)>0 and s.players[i] then
+    local rank=s.winningRanks and s.winningRanks[i]
+    local category=type(rank)=='table' and tonumber(rank[1]) or nil
+    local handName=category and handCategories[category+1] or 'WINNER BY FOLD'
+    announcements[#announcements+1]={name=s.players[i].name,gain=tonumber(gain),hand=handName}
+   end
   end
-  table.sort(announcements)
-  effects.announcement:SetText(table.concat(announcements,'  |  '));effects.announcement:Show()
- else effects.announcement:Hide() end
+  table.sort(announcements,function(a,b)return a.name<b.name end)
+  local names,combinations={},{ }
+  for _,v in ipairs(announcements) do
+   names[#names+1]=v.name..' +'..money(v.gain)
+   combinations[#combinations+1]=v.hand
+  end
+  winnerText:SetText('WINNER: '..table.concat(names,'  |  ')..'\n'..table.concat(combinations,'  |  '))
+  winnerPanel:Show()
+ else winnerPanel:Hide() end
  local active=s.phase~='LOBBY' and s.phase~='SHOWDOWN' and s.actionSeat
  local lines={}
  for i=math.max(1,#s.log-2),#s.log do if s.log[i] then lines[#lines+1]=s.log[i] end end
@@ -448,6 +551,8 @@ function R.BarrensClearSoloTableVisuals()
 end
 function R.OpenBarrensTable()
  build();update();f:Show();f:Raise()
+ local main=_G.RaidPokerBarrensGameControls
+ if main and main:IsShown() then arrangePairedWindows(f,main,(RaidPokerWotLKDB and RaidPokerWotLKDB.barrensTableScale) or 1,(RaidPokerWotLKDB and RaidPokerWotLKDB.barrensWindowScale) or 1) end
 end
 
 -- Public theme controls for the existing Hold'em Settings window.

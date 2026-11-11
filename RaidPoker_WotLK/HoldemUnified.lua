@@ -15,7 +15,7 @@ function U.SetMode(m)
  if m~='SOLO' and m~='NETWORK' then return false,'Use SOLO or NETWORK' end
  if m=='SOLO' and H.phase~='LOBBY' and H.phase~='SHOWDOWN' then return false,'Finish the active hand before changing mode' end
  if m=='NETWORK' and U.mode~='NETWORK' then
-  if R.HoldemSoloDebug then R.HoldemSoloDebug.auto=false end
+  if R.HoldemSoloDebug and R.HoldemSoloDebug.StopForNetwork then R.HoldemSoloDebug.StopForNetwork() end
   -- Do not leave preview bots or an unfinished solo hand in the network engine.
   H.phase='LOBBY';H.players={};H.board={};H.deck={};H.pot=0;H.actionSeat=nil
   H.winners={};H.sidePots={};H.handNumber=0;H.log={}
@@ -73,7 +73,10 @@ function R.BarrensUnifiedAction(action,amount)
  return true
 end
 function R.BarrensUnifiedStart()
- if mode()=='SOLO' then return H.StartPreviewHand() end
+ if mode()=='SOLO' then
+  if not (R.HoldemSoloDebug and R.HoldemSoloDebug.active) then return false,'Open Solo Debug to start a local game.' end
+  return H.StartPreviewHand()
+ end
  local m=R.HoldemMultiplayer
  if not m then return false,'Multiplayer module unavailable' end
  return m.StartHand()
@@ -85,7 +88,7 @@ function R.BarrensUnifiedReset()
 end
 function R.BarrensCloseSoloGame()
  if mode()~='SOLO' then return false,'Leave the multiplayer table before closing Solo Debug' end
- if R.HoldemSoloDebug then R.HoldemSoloDebug.auto=false end
+ if R.HoldemSoloDebug then R.HoldemSoloDebug.auto=false;R.HoldemSoloDebug.active=false end
  H.phase='LOBBY';H.players={};H.board={};H.deck={};H.pot=0;H.actionSeat=nil
  H.handNumber=0;H.dealer=0;H.smallBlindSeat=nil;H.bigBlindSeat=nil
  H.currentBet=0;H.minRaise=H.bigBlind or 10

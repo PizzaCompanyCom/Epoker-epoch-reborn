@@ -34,8 +34,8 @@ function R.BuildGame(main)
   t:SetPoint('CENTER',f,'TOP',15+(i-1)*7,-306+(i-1)*3)
   t:Hide();V.silverStack[i]=t
  end
- V.winnerBanner=label(f,'TOP',0,-181,340,'GameFontNormalLarge')
- V.winnerBanner:SetTextColor(1,0.82,0.28);V.winnerBanner:Hide()
+ -- The only winner banner is V.winBanner from VisualTable.lua.
+ V.winnerBanner=nil
  for _,s in ipairs(V.seats or {}) do
   s.table7Border=s:CreateTexture(nil,'BORDER')
   s.table7Border:SetTexture('Interface\\Buttons\\WHITE8X8')
@@ -99,10 +99,7 @@ function R.Refresh()
  -- Keep procedural G/S badges managed by VisualTable.lua visible.
  -- The legacy Table7 stack textures are hidden below (client-dependent).
  local phase=g.phase or 'IDLE'
- if phase=='SHOWDOWN' and g.winner and g.winner~='' and db().table7Effects~=false then
-  V.winnerBanner:SetText('WINNER  '..string.sub(R.MoneyText and R.MoneyText(g.winner) or g.winner,1,38))
-  V.winnerBanner:Show()
- else V.winnerBanner:Hide() end
+ -- No duplicate winner text behind the cards; VisualTable owns the announcement.
  for _,s in ipairs(V.seats or {}) do
   -- Safety: never reveal cards before showdown, even after multiple rounds.
   if phase~='SHOWDOWN' then
@@ -122,13 +119,9 @@ timer:SetScript('OnUpdate',function(self,dt)
  local g=R.G or {}
  local phase=g.phase or 'IDLE'
  if phase~='SHOWDOWN' then
-  V.winnerBanner:Hide()
   for _,s in ipairs(V.seats or {}) do
    for _,face in ipairs(s.cardFaces or {}) do face:Hide() end
   end
- elseif V.winnerBanner:IsShown() then
-  winnerTime=winnerTime+dt
-  V.winnerBanner:SetTextColor(1,0.65+0.3*math.abs(math.sin(GetTime()*3)),0.2)
  end
  local opacity=clamp(tonumber(db().table7Opacity) or 1,0.4,1)
  V.felt:SetAlpha(opacity)

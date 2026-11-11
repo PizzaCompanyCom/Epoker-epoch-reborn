@@ -272,7 +272,7 @@ function R.OpenBarrensStatistics()
   end
   statsRows[1]=txt(statsFrame,'','GameFontHighlightSmall');statsRows[1]:SetPoint('TOPLEFT',statsFrame,20,-51);statsRows[1]:SetWidth(530)
   statsRows[2]=txt(statsFrame,'','GameFontHighlightSmall');statsRows[2]:Hide()
-  for i=1,10 do
+  for i=1,6 do
    local y=-104-(i-1)*24
    local bg=statsFrame:CreateTexture(nil,'BACKGROUND');bg:SetTexture('Interface\\Buttons\\WHITE8X8')
    bg:SetPoint('TOPLEFT',statsFrame,16,y+3);bg:SetSize(537,23)
@@ -294,7 +294,7 @@ function R.RefreshBarrensStatistics()
  local s=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot() or H.GetPublicSnapshot()
  if not s then return end
  statsRows[1]:SetText('Hand: '..tostring(s.handNumber or 0)..'   Phase: '..tostring(s.phase or 'LOBBY')..'   Pot: '..money(paidPot(s)))
- for i=1,10 do
+ for i=1,6 do
   local p=s.players and s.players[i]
   local cells=statsRows[i+2]
   local state=p and (p.folded and 'Folded' or (p.allIn and 'All-In' or 'Playing')) or ''
@@ -308,6 +308,7 @@ local function build()
  frame=CreateFrame('Frame','RaidPokerBarrensGameControls',UIParent)
  frame:SetSize(790,815);frame:SetPoint('CENTER',UIParent,'CENTER',0,0)
  frame:SetFrameStrata('DIALOG');frame:SetMovable(true);frame:EnableMouse(true);frame:RegisterForDrag('LeftButton');frame:SetClampedToScreen(true)
+ frame:HookScript('OnMouseDown',function(self)self:Raise()end)
  frame:SetScript('OnDragStart',function(self)self:StartMoving()end)
  frame:SetScript('OnDragStop',function(self)self:StopMovingOrSizing(); if RaidPokerWotLKDB then RaidPokerWotLKDB.barrensControlsPosition={self:GetCenter()} end end)
  if RaidPokerWotLKDB and RaidPokerWotLKDB.barrensControlsPosition then local p=RaidPokerWotLKDB.barrensControlsPosition; if p[1] and p[2] then frame:ClearAllPoints();frame:SetPoint('CENTER',UIParent,'BOTTOMLEFT',p[1],p[2]) end end
@@ -315,13 +316,13 @@ local function build()
   frame:SetBackdropColor(0.065,0.045,0.025,0.98)
   frame:SetBackdropBorderColor(0.65,0.45,0.21,1)
  -- The large decorative title is intentionally omitted to match 5-Card Draw.
- local pokerButton=iconButton(frame,'Poker Table','Interface\\Icons\\INV_Misc_Coin_01',130,26,function()local f=_G.RaidPokerBarrensTable;if f and f:IsShown() then f:Hide() elseif R.OpenBarrensTable then R.OpenBarrensTable() end end)
- pokerButton:SetPoint('TOPLEFT',frame,15,-12)
- local closeSoloButton=iconButton(frame,'Close Solo','Interface\\Icons\\INV_Misc_Dice_02',130,26,function()
+ -- Poker Table navigation is in the primary row.
+ local pokerButton=frame
+ local closeSoloButton=iconButton(frame,'Close Bots','Interface\\Icons\\INV_Misc_Dice_02',130,26,function()
   if R.BarrensCloseSoloGame then local ok,err=R.BarrensCloseSoloGame();if not ok and R.Print then R.Print(err) end end
  end)
- closeSoloButton:SetPoint('TOPLEFT',pokerButton,'BOTTOMLEFT',0,-3)
- closeSoloButton:SetScript('OnEnter',function(self)GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText('Close Solo Debug Game');GameTooltip:AddLine('Clears local bots and preview cards. Does not close a network table.',1,1,1,true);GameTooltip:Show()end)
+ closeSoloButton:SetPoint('TOPLEFT',frame,15,-12)
+ closeSoloButton:SetScript('OnEnter',function(self)GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText('Close Bots / Solo Debug');GameTooltip:AddLine('Clears local bots and preview cards. Does not close a network table.',1,1,1,true);GameTooltip:Show()end)
  closeSoloButton:SetScript('OnLeave',function()GameTooltip:Hide()end)
 
  local toolbar={
@@ -412,10 +413,10 @@ local function build()
  end
  local primary={
   {'Join Table','Interface\\Icons\\INV_Misc_GroupLooking',joinTable},
-  {'Leave Table','Interface\\Buttons\\UI-MinusButton-Up',leaveTable},
-  {'Start Hand','Interface\\Icons\\INV_Gauntlets_05',function()if R.BarrensUnifiedStart then message(R.BarrensUnifiedStart()) else message(H.StartPreviewHand()) end end},
-  {'History','Interface\\Icons\\INV_Misc_Note_01',function()if R.OpenBarrensHistory then R.OpenBarrensHistory() elseif R.Print then R.Print('Holdem: recent actions are displayed in the main window.') end end},
+  {'Poker Table','Interface\\Icons\\INV_Misc_Coin_01',function()local f=_G.RaidPokerBarrensTable;if f and f:IsShown() then f:Hide() elseif R.OpenBarrensTable then R.OpenBarrensTable() end end},
+  {'Start Game','Interface\\Icons\\INV_Gauntlets_05',function()if R.BarrensUnifiedStart then message(R.BarrensUnifiedStart()) else message(H.StartPreviewHand()) end end},
   {'Leader','Interface\\Icons\\INV_Misc_Head_Human_01',function()if R.OpenBarrensLeaderControls then R.OpenBarrensLeaderControls() end end},
+  {'Leave Table','Interface\\Buttons\\UI-MinusButton-Up',leaveTable},
  }
  local primaryButtons={}
  for i,v in ipairs(primary) do
@@ -476,6 +477,7 @@ local function build()
   b:SetPoint('TOPLEFT',frame,26+(i-1)*148,-479);buttons[i]=b
   if i==1 then for j=1,b:GetNumRegions() do local region=select(j,b:GetRegions());if region and region.GetTexture and region:GetTexture()=='Interface\\Icons\\INV_Shield_05' then region:ClearAllPoints();region:SetPoint('LEFT',b,'LEFT',9,0) end end end
  end
+ if R.HF07RegisterHoldemActions then R.HF07RegisterHoldemActions(buttons,raiseGold,raiseSilver,anteGold,anteSilver,apply) end
  local presets=CreateFrame('Frame',nil,frame);presets:SetSize(746,88);presets:SetPoint('TOP',frame,0,-602)
  presets:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\Tooltips\\UI-Tooltip-Border',edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
  presets:SetBackdropColor(0,0.035,0.025,0.66);presets:SetBackdropBorderColor(0.45,0.38,0.19,0.9)
