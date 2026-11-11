@@ -62,6 +62,21 @@ function M.Remove(name)
  for i,s in ipairs(M.seats) do if s.name==name then table.remove(M.seats,i);audit('REMOVE '..name);publishSeats();refresh();return true end end
  return false,'Player not seated'
 end
+-- Preserve seat indices until showdown; never splice H.players mid-hand.
+function M.Depart(name)
+ if not host() then return false,'Game Master only' end
+ if waiting() then return M.Remove(name) end
+ local found=false
+ for _,s in ipairs(M.seats) do
+  if s.name==name then s.sittingOut=true;s.departed=true;found=true;break end
+ end
+ if not found then return false,'Player not seated' end
+ if H.ForceFoldDeparting then H.ForceFoldDeparting(name) end
+ audit('LEAVE '..name..' (fold, pending seat release)')
+ if H.phase=='SHOWDOWN' then M.AfterAction() end
+ refresh()
+ return true
+end
 function M.SetStack(name,silver)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
  silver=tonumber(silver)
@@ -125,7 +140,14 @@ function M.AfterAction()
    if H.phase=='SHOWDOWN' and previous>0 and M.seats[i].stack==0 then audit('BUSTED '..p.name) end
   end
  end
- if H.phase=='SHOWDOWN' then M.active=false;audit('SHOWDOWN HAND '..H.handNumber) end
+ if H.phase=='SHOWDOWN' then
+  M.active=false;audit('SHOWDOWN HAND '..H.handNumber)
+  local removed=false
+  for i=#M.seats,1,-1 do
+   if M.seats[i].departed then table.remove(M.seats,i);removed=true end
+  end
+  if removed then publishSeats() end
+ end
  refresh()
 end
 local function message(ok,why)

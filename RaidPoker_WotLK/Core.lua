@@ -1,5 +1,5 @@
 local A=CreateFrame('Frame','RaidFivePokerBootstrap')
-RPoker={version='1.8.0-alpha2'}
+RPoker={version='1.9.0-RC1'}
 local R=RPoker
 local function msg(s) DEFAULT_CHAT_FRAME:AddMessage('|cffffcc55Raid 5-Card Poker:|r '..tostring(s)) end
 R.Print=msg

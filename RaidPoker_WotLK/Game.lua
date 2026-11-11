@@ -6,6 +6,8 @@ local tables={} -- discovery only; each client plays at one table
 local activeID=''
 local tableName=''
 local lastAdvert=0
+local pendingGMTransfer=nil
+local transferOffer=nil
 local function validID(id) return type(id)=='string' and string.match(id,'^[%w%-]+$') and #id<=48 end
 local function remember(id,name,gm,count,phase)
  if not validID(id) then return end
@@ -321,10 +323,11 @@ local function startHand()
 end
 R.StartPokerHandFromTable = startHand
 local function join(name)
- if not host() or G.phase~='LOBBY' then return end
+ if not host() or G.phase=='IDLE' then return end
  if player(name) or #G.players>=6 then return end
  if not G.solo and not UnitInRaid(name) then return end
  table.insert(G.players,{name=name,balance=G.stack,status=((G.stack or 0)<=0 and 'Busted' or 'Playing'),inhand=false,fold=false,allin=false,paid=0,total=0,done=false})
+ if G.phase~='LOBBY' and G.phase~='SHOWDOWN' then say(name..' seated: waiting for next hand.') end
  log(name..' joined table'..(((G.stack or 0)<=0) and ' [BUSTED: 0s]' or ''));broadcast()
 end
 local function request(kind,payload)
@@ -336,6 +339,7 @@ local function request(kind,payload)
  else say('No active table. Click Host Table to create one.') end
 end
 local function resetTable()
+ pendingGMTransfer=nil;transferOffer=nil
  G.host='';G.phase='IDLE';G.players={};G.round=0;G.pot=0;G.bet=0
  G.turn='';G.winner='';G.log={};G.hand={};G.selected={}
  activeID='';tableName=''
@@ -354,6 +358,10 @@ local function hostTable(name)
  say('Created '..tableName..'. You are Game Master.')
 end
 function R.CreateNamedTable(name)
+ if R.HoldemNetwork and R.HoldemNetwork.active then
+  if R.PokerWarnOtherMode then R.PokerWarnOtherMode('5-Card Draw', 'The Barrens Holdem', R.HoldemNetwork.owner) end
+  return
+ end
  if G.solo then
   if not raid() then say('Join a raid before creating a multiplayer table.');return end
   if cleanName(name)=='' then say('Enter a table name.');return end
@@ -377,6 +385,10 @@ function R.DiscoverTables()
  if host() then broadcast() end
 end
 function R.JoinNamedTable(id)
+ if R.HoldemNetwork and R.HoldemNetwork.active then
+  if R.PokerWarnOtherMode then R.PokerWarnOtherMode('5-Card Draw', 'The Barrens Holdem', R.HoldemNetwork.owner) end
+  return
+ end
  if activeID~='' then say('Leave your current table first.');return end
  local t=tables[id]
  if not t or GetTime()-t.seen>45 then say('Refresh the table list.');return end
@@ -394,7 +406,7 @@ end
 function R.LeaveNamedTable()
  if activeID=='' then return end
  if host() then say('Transfer Game Master or Close Table first.');return end
- if G.phase~='LOBBY' and G.phase~='SHOWDOWN' then say('Leave between hands only.');return end
+ -- The host resolves a departure during a hand as a fold, preserving committed bets.
  send('LEAVE','',G.host)
  resetTable()
 end
@@ -443,9 +455,28 @@ local function receive(prefix,msg,channel,sender)
   return
  end
  if k=='LEAVE' then
-  if host() and (G.phase=='LOBBY' or G.phase=='SHOWDOWN') and sender~=me() then
-   for i=#G.players,1,-1 do if G.players[i].name==sender then table.remove(G.players,i) end end
-   broadcast()
+  if host() and sender~=me() then
+   local departing=player(sender)
+   if departing then
+    local activeHand=(G.phase=='BET1' or G.phase=='BET2' or G.phase=='DRAW')
+    local wasTurn=(G.turn==sender)
+    if activeHand and departing.inhand then
+     -- Preserve the pot and committed bets; never refund a voluntary exit.
+     departing.fold=true;departing.done=true;departing.inhand=false
+     log(sender..' left the table (automatic fold)')
+    end
+    for i=#G.players,1,-1 do
+     if G.players[i].name==sender then table.remove(G.players,i);break end
+    end
+    if activeHand and wasTurn then
+     -- Advance through the same turn/phase machinery as a normal action.
+     doneTurn()
+    elseif activeHand and countActive()<=1 then
+     finishHand('fold')
+    else
+     broadcast()
+    end
+   end
   end
   return
  end
@@ -453,6 +484,31 @@ local function receive(prefix,msg,channel,sender)
   if sender==me() or (G.host~='' and G.host~=sender) then return end
   if not UnitInRaid(sender) then return end
   if G.host~=sender then G.host=sender;G.phase='LOBBY';G.players={} end;tableName=cleanName(d);R.Refresh();return
+ end
+ -- Two-phase GM handoff: the old host remains authoritative until the seated successor acknowledges.
+ if k=='GMREQ' then
+  if sender~=G.host or not UnitInRaid(sender) or G.phase~='LOBBY' and G.phase~='SHOWDOWN' then return end
+  if short(d)~=me() or not player(me()) then return end
+  transferOffer={from=sender,received=GetTime()}
+  -- The successor has already received the host's full STATE/PLAYER snapshot.
+  send('GMACK',sender,G.host)
+  say('Accepting Game Master handoff from '..sender..'.')
+  return
+ end
+ if k=='GMACK' then
+  if not host() or not pendingGMTransfer or sender~=pendingGMTransfer.target or short(d)~=me() then return end
+  if G.phase~='LOBBY' and G.phase~='SHOWDOWN' or not player(sender) or not UnitInRaid(sender) then
+   pendingGMTransfer=nil;return
+  end
+  local target=pendingGMTransfer.target
+  pendingGMTransfer=nil
+  adminRecord('Transferred Game Master to '..target)
+  send('GMX',target)
+  G.host=target
+  if tables[activeID] then tables[activeID].gm=target end
+  say('Game Master handoff confirmed: '..target)
+  R.Refresh()
+  return
  end
  if k=='GMX' then
   if sender~=G.host then return end
@@ -1067,11 +1123,24 @@ function R.AdminTransferGM(name)
  if G.phase~='LOBBY' and G.phase~='SHOWDOWN' then say('Transfer between hands only.');return end
  local p=player(name)
  if not p or p.name==me() or not UnitInRaid(p.name) then say('Choose another seated raid member.');return end
- adminRecord('Transferred Game Master to '..p.name)
- -- The full state is broadcast before the handoff so the recipient has the current balances.
+ if pendingGMTransfer then say('A Game Master transfer is already pending.');return end
+ -- Keep the current host until the designated recipient acknowledges the request.
  broadcast()
- send('GMX',p.name)
- G.host=p.name
- if tables[activeID] then tables[activeID].gm=p.name end
- R.Refresh()
+ pendingGMTransfer={target=p.name,started=GetTime()}
+ send('GMREQ',p.name,p.name)
+ say('Waiting for '..p.name..' to acknowledge Game Master transfer (12 seconds).')
 end
+
+-- Stage 6: a lost acknowledgement must never orphan the 5-Card Draw table.
+local gmTransferWatch=CreateFrame('Frame')
+local gmTransferTick=0
+gmTransferWatch:SetScript('OnUpdate',function(self,dt)
+ gmTransferTick=gmTransferTick+dt
+ if gmTransferTick<1 then return end
+ gmTransferTick=0
+ if pendingGMTransfer and GetTime()-pendingGMTransfer.started>=12 then
+  say('Game Master transfer timed out. You remain Game Master.')
+  pendingGMTransfer=nil
+ end
+ if transferOffer and GetTime()-transferOffer.received>=12 then transferOffer=nil end
+end)

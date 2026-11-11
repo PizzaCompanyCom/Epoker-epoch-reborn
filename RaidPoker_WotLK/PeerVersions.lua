@@ -12,6 +12,10 @@ local lastQuery=-100
 local mismatchShown={}
 local pendingQuery=false
 local queryDelay=0
+local function myVersion()
+ local v=GetAddOnMetadata and GetAddOnMetadata('RaidPoker_WotLK','Version')
+ return tostring(v or R.version or 'Unknown'):sub(1,35)
+end
 local function announceMismatch(name,version,protocol)
  if not name or not version then return end
  local localVersion=myVersion()
@@ -28,10 +32,6 @@ local function announceMismatch(name,version,protocol)
  end
 end
 local function selfName() return UnitName('player') or '' end
-local function myVersion()
- local v=GetAddOnMetadata and GetAddOnMetadata('RaidPoker_WotLK','Version')
- return tostring(v or R.version or 'Unknown'):sub(1,35)
-end
 local function inRaid(name)
  if not GetNumRaidMembers or GetNumRaidMembers()==0 then return false end
  for i=1,GetNumRaidMembers() do

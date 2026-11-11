@@ -327,21 +327,41 @@ local function build()
   soloBots:SetPoint('TOPLEFT',f,'TOPLEFT',140,-16)
  local startGame=button(f,'Start Game',130,25,function()
   local ok,err
+  local n=R.HoldemNetwork
+  if n and n.active and not n.owner then
+   StaticPopup_Show('EPOKER_GM_START_WARNING',n.host or 'Unknown')
+   return
+  end
   if R.BarrensUnifiedStart then ok,err=R.BarrensUnifiedStart() elseif H.StartPreviewHand then ok,err=H.StartPreviewHand() end
   if ok==false and R.Print then R.Print(err or 'Cannot start game') end
  end)
  startGame:SetPoint('TOPRIGHT',f,'TOPRIGHT',-332,-16)
+ local leaveTable=button(f,'Leave Table',115,25,function()
+  local n=R.HoldemNetwork
+  if n and n.active then
+   if n.owner then StaticPopup_Show('EPOKER_HOLDEM_GM_LEAVE_WARNING')
+   elseif R.BarrensNetworkLeave then
+    -- A live hand must be resolved by the Game Master before a voluntary exit.
+    local phase=R.Holdem and R.Holdem.phase or 'LOBBY'
+    if phase~='LOBBY' and phase~='SHOWDOWN' then
+     if R.Print then R.Print('Finish the current hand before leaving this table.') end
+    else R.BarrensNetworkLeave() end
+   end
+  elseif R.BarrensCloseSoloGame then R.BarrensCloseSoloGame() end
+ end)
+ leaveTable:SetPoint('TOPLEFT',f,'TOPLEFT',265,-16)
  local function headerIcon(b,texture)
   local t=b:CreateTexture(nil,'OVERLAY')
   t:SetTexture(texture);t:SetSize(16,16);t:SetPoint('LEFT',b,'LEFT',5,0)
   b:SetText('   '..b:GetText())
  end
  headerIcon(soloBots,'Interface\\Icons\\INV_Misc_Dice_02')
+ headerIcon(leaveTable,'Interface\\Icons\\Ability_Rogue_FeignDeath')
  headerIcon(closeBots,'Interface\\Icons\\Ability_Rogue_FeignDeath')
  headerIcon(startGame,'Interface\\Icons\\INV_Misc_Coin_01')
  headerIcon(general,'Interface\\Icons\\INV_Misc_Book_09')
  headerIcon(optionsButton,'Interface\\Icons\\Trade_Engineering')
- for _,b in ipairs({optionsButton,general,closeBots,soloBots,startGame}) do
+ for _,b in ipairs({optionsButton,general,closeBots,soloBots,leaveTable,startGame}) do
   b:SetFrameLevel(f:GetFrameLevel()+60)
   b:HookScript('OnMouseDown',function()f:Raise()end)
  end

@@ -82,8 +82,29 @@ local function leave()
  if R.BarrensCloseSoloGame then R.BarrensCloseSoloGame() end
  refresh()
 end
-function R.BarrensNetworkLeave() leave() end
+-- All Leave Table entry points use this guarded function. Only the GM can close a live session.
+function R.BarrensNetworkLeave()
+ if not N.active then return true end
+ if N.owner then
+  if StaticPopup_Show then StaticPopup_Show('EPOKER_HOLDEM_GM_LEAVE_WARNING') end
+  return false,'Game Master must transfer management or close the table'
+ end
+ -- The host resolves an active-hand departure as a fold, preserving the pot.
+ -- The leaving client clears its private cards immediately.
+ leave();return true
+end
+function R.BarrensNetworkCloseByGM()
+ if not N.active or not N.owner or N.host~=me() then return false,'Game Master only' end
+ local phase=R.Holdem and R.Holdem.phase or 'LOBBY'
+ if phase~='LOBBY' and phase~='SHOWDOWN' then return false,'Finish the current hand first' end
+ leave() -- Broadcast L so clients close the same session.
+ return true
+end
 local function create()
+ if R.ActiveTableID and R.ActiveTableID()~='' then
+  if R.PokerWarnOtherMode then R.PokerWarnOtherMode('The Barrens Holdem', '5-Card Draw', R.IsGameMaster and R.IsGameMaster()) end
+  return
+ end
  if not raid() then R.Print('Barrens Network: Join a raid first.');return end
  if N.active then R.Print('Already connected to a table.');return end
  N.PruneDiscovery()
@@ -116,6 +137,10 @@ local function discover()
  refresh()
 end
 local function join()
+ if R.ActiveTableID and R.ActiveTableID()~='' then
+  if R.PokerWarnOtherMode then R.PokerWarnOtherMode('The Barrens Holdem', '5-Card Draw', R.IsGameMaster and R.IsGameMaster()) end
+  return
+ end
  if N.active then return end
  local host,session
  if N.selectedHost and N.discovered[N.selectedHost] then host=N.selectedHost;session=N.discovered[host] end
@@ -135,6 +160,10 @@ local function join()
 end
 function N.CreateSingle() create() end
 function N.JoinSingle()
+ if R.ActiveTableID and R.ActiveTableID()~='' then
+  if R.PokerWarnOtherMode then R.PokerWarnOtherMode('The Barrens Holdem', '5-Card Draw', R.IsGameMaster and R.IsGameMaster()) end
+  return false,'Leave current table first'
+ end
  if N.active then
   if N.owner and R.HoldemMultiplayer and R.HoldemMultiplayer.Assign then
    R.HoldemMultiplayer.Assign(me())
@@ -183,7 +212,7 @@ local function build()
  button('Create Table',20,-90,104,create)
  button('Refresh',132,-90,90,discover)
  button('Join First Found Table',230,-90,162,join)
- button('Leave',400,-90,62,leave)
+ button('Leave',400,-90,62,function() if R.BarrensNetworkLeave then R.BarrensNetworkLeave() end end)
  for i=1,4 do
   local b=button('',20,-166-(i-1)*39,440,function(self)
    N.selectedHost=self.host
@@ -253,8 +282,16 @@ ev:SetScript('OnEvent',function(self,event,...)
   -- The Game Master seats a newly admitted, compatible player automatically.
   -- An existing seat is reused; no duplicate seat is created.
   if R.HoldemMultiplayer and R.HoldemMultiplayer.Assign then
-   local ok,why=R.HoldemMultiplayer.Assign(sender)
-   if ok then
+   local ok,why
+   if R.Holdem and R.Holdem.phase~='LOBBY' and R.Holdem.phase~='SHOWDOWN' then
+    ok,why=R.HoldemMultiplayer.QueueSeat(sender)
+   else
+    ok,why=R.HoldemMultiplayer.Assign(sender)
+   end
+   if ok and why=='WAIT' then
+    announce('E|'..safe(N.session)..'|'..safe(sender)..'|WAIT')
+    if R.Print then R.Print(sender..' is waiting for the next Holdem hand.') end
+   elseif ok then
     for _,seat in ipairs(R.HoldemMultiplayer.seats) do
      if seat.name==sender and (seat.stack or 0)<=0 then
       announce('E|'..safe(N.session)..'|'..safe(sender)..'|ZERO')
@@ -275,7 +312,8 @@ ev:SetScript('OnEvent',function(self,event,...)
   local code=remoteVersion or msg:match('^E|[^|]+|[^|]+|([A-Z]+)$')
   if code=='ZERO' then R.Print('Insufficient Balance: You are seated with 0s and cannot play until the Game Master adds funds.')
   elseif code=='FULL' then R.Print('Table is full. You are connected but not seated.')
-  else R.Print('Connected, but automatic seating is not available yet. Contact the Game Master.') end
+  elseif code=='WAIT' then R.Print('Joined lobby. Your seat will be assigned before the next hand.')
+  else R.Print('Automatic seating is unavailable. Contact the Game Master.') end
  elseif kind=='X' and N.active and not N.owner and sender==N.host and who==me() and session==N.session then
   if R.PokerShowVersionWarning then R.PokerShowVersionWarning(sender,remoteVersion or 'Unknown') end
   leave()
@@ -284,7 +322,16 @@ ev:SetScript('OnEvent',function(self,event,...)
  elseif kind=='L' and N.active and session==N.session and who==sender then
   if sender==N.host then leave() else
    N.members[sender]=nil
-   if N.owner and R.HoldemMultiplayer and R.HoldemMultiplayer.Remove then R.HoldemMultiplayer.Remove(sender) end
+   if N.owner and R.HoldemMultiplayer then
+    local M=R.HoldemMultiplayer
+    if M.pendingSeats then
+     for i=#M.pendingSeats,1,-1 do if M.pendingSeats[i]==sender then table.remove(M.pendingSeats,i) end end
+    end
+    if M.Depart then
+     M.Depart(sender)
+     if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
+    end
+   end
   end
  end
  refresh()

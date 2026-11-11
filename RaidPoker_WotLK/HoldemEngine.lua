@@ -241,6 +241,22 @@ function H.Action(action,amount)
  else return false,'Unknown action.' end
  advanceIfReady();notify();return true
 end
+-- Host-authoritative departure: fold without altering committed chips or pot.
+-- Unlike H.Action('FOLD'), this can handle a player who is not the current actor.
+function H.ForceFoldDeparting(name)
+ if H.phase=='LOBBY' or H.phase=='SHOWDOWN' then return false,'No active hand' end
+ local index
+ for i,p in ipairs(H.players) do if p.name==name then index=i;break end end
+ if not index then return false,'Player not in hand' end
+ local p=H.players[index]
+ if not p.dealt or p.folded then return true end
+ local acting=(H.actionSeat==index)
+ p.folded=true;p.done=true;p.sittingOut=true
+ log(name..' leaves the table (automatic fold)')
+ if acting or countContestants()<=1 then advanceIfReady() end
+ notify()
+ return true
+end
 function H.AdvancePreview()
  -- Retained for compatibility, but cannot bypass a live betting round.
  if H.phase=='LOBBY' or H.phase=='SHOWDOWN' then return false,'Start a preview hand first.' end

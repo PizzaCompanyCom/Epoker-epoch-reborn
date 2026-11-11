@@ -679,6 +679,10 @@ function R.BuildGame(main)
  end
  local settingsButton=btn(f,'Settings Table',580,-15,119,toggleSettings)
  local startGameButton=btn(f,'Start Game',333,-15,120,function()
+  if not (R.G and R.G.solo) and R.ActiveTableID and R.ActiveTableID()~='' and R.IsPokerHost and not R.IsPokerHost() then
+   StaticPopup_Show('EPOKER_GM_START_WARNING',R.GameMasterName and R.GameMasterName() or 'Unknown')
+   return
+  end
   if R.StartPokerHandFromTable then R.StartPokerHandFromTable() end
  end)
  local closeBotsButton=btn(f,'Close Bots',22,-15,123,function()
@@ -687,6 +691,15 @@ function R.BuildGame(main)
   local soloBotsButton=btn(f,'Solo Bots',157,-15,125,function()
    if R.ToggleDebugPanel then R.ToggleDebugPanel() end
  end)
+ local leaveTableButton=btn(f,'Leave Table',292,-46,128,function()
+  if R.G and R.G.solo then
+   if R.SoloStop then R.SoloStop() end
+  elseif R.ActiveTableID and R.ActiveTableID()~='' then
+   if R.IsPokerHost and R.IsPokerHost() then
+    StaticPopup_Show('EPOKER_GM_LEAVE_WARNING')
+   elseif R.LeaveNamedTable then R.LeaveNamedTable() end
+  elseif R.Print then R.Print('You are not seated at a multiplayer table.') end
+ end)
  -- Compact Blizzard icon textures; preserve all original click handlers.
  local function headerIcon(b,texture)
   local t=b:CreateTexture(nil,'OVERLAY')
@@ -694,12 +707,13 @@ function R.BuildGame(main)
   b:SetText('   '..b:GetText())
  end
  headerIcon(soloBotsButton,'Interface\\Icons\\INV_Misc_Dice_02')
+ headerIcon(leaveTableButton,'Interface\\Icons\\Ability_Rogue_FeignDeath')
  headerIcon(closeBotsButton,'Interface\\Icons\\Ability_Rogue_FeignDeath')
  headerIcon(startGameButton,'Interface\\Icons\\INV_Misc_Coin_01')
  headerIcon(generalButton,'Interface\\Icons\\INV_Misc_Book_09')
  headerIcon(settingsButton,'Interface\\Icons\\Trade_Engineering')
  -- Header drag and decorative layers must never intercept these controls.
- for _,b in ipairs({generalButton,settingsButton,startGameButton,closeBotsButton,soloBotsButton}) do
+ for _,b in ipairs({generalButton,settingsButton,startGameButton,closeBotsButton,soloBotsButton,leaveTableButton}) do
   b:SetFrameStrata('DIALOG')
   b:SetFrameLevel(f:GetFrameLevel()+70)
   b:EnableMouse(true)
