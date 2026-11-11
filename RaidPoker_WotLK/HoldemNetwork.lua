@@ -284,7 +284,11 @@ ev:SetScript('OnEvent',function(self,event,...)
   if R.HoldemMultiplayer and R.HoldemMultiplayer.Assign then
    local ok,why
    if R.Holdem and R.Holdem.phase~='LOBBY' and R.Holdem.phase~='SHOWDOWN' then
-    ok,why=R.HoldemMultiplayer.QueueSeat(sender)
+    if R.HoldemMultiplayer.QueueSeat then
+     ok,why=R.HoldemMultiplayer.QueueSeat(sender)
+    else
+     ok,why=false,'Late seating unavailable: update HoldemMultiplayer.lua'
+    end
    else
     ok,why=R.HoldemMultiplayer.Assign(sender)
    end

@@ -210,7 +210,7 @@ timer:SetScript('OnUpdate',function(self,dt)
    if S.requestElapsed>=4.5 then S.requestElapsed=0;S.Request() end
   else S.requestElapsed=0 end
   if win and win:IsShown() then refresh() end
- end end
+ end
 end)
 local old=SlashCmdList.RAIDFIVEPOKER
 if old then
