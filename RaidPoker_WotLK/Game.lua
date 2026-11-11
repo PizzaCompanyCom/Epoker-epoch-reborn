@@ -748,14 +748,14 @@ function R.BuildGame(main)
  local r=text(main,30,-456,170,'GameFontHighlightSmall');r:SetText('Raise (Gold / Silver):')
  ui.raiseGold=input(main,36,-482,54,0)
  ui.raiseSilver=input(main,101,-482,54,20)
- local a=text(main,260,-456,170,'GameFontHighlightSmall');a:SetText('Ante (Gold / Silver):')
+ local a=text(main,260,-456,280,'GameFontHighlightSmall');a:SetText('Ante (Gold / Silver) - Game Master Only:')
  ui.anteGold=input(main,266,-482,54,0)
  ui.anteSilver=input(main,331,-482,54,10)
  local b=text(main,485,-456,170,'GameFontHighlightSmall');b:SetText('Starting stack (G / S):')
  ui.stackGold=input(main,491,-482,54,10)
  ui.stackSilver=input(main,556,-482,54,0)
  button(main,'Apply',650,-482,85,function()
-  if not host() or G.phase~='LOBBY' then say('Host only, lobby only.');return end
+  if not host() or (G.phase~='LOBBY' and G.phase~='SHOWDOWN') then say('Game Master only, between hands.');return end
   local ante=R.ReadMoney(ui.anteGold,ui.anteSilver);local stack=R.ReadMoney(ui.stackGold,ui.stackSilver)
   if not ante or not stack then say('Invalid gold / silver amount. Silver must be 0-99.');return end
   if ante<0 or stack<1 or stack>100000000 then return end
@@ -796,6 +796,9 @@ end
 function R.Refresh()
  if not ui.status then return end
  ui.status:SetText((G.solo and '[SOLO DEBUG]  ' or '')..'Table: '..(tableName~='' and tableName or 'none')..'  |  Game Master: '..(G.host~='' and G.host or 'none')..'   |   Round: '..G.round..'   |   Phase: '..G.phase)
+ if ui.anteGold and ui.anteSilver and not ui.anteGold:HasFocus() and not ui.anteSilver:HasFocus() then
+  ui.anteGold:SetText(tostring(math.floor(G.ante/100)));ui.anteSilver:SetText(tostring(G.ante%100))
+ end
  ui.info:SetText('Players: '..#G.players..'/6     Ante: '..R.Money(G.ante)..'     Starting stack: '..R.Money(G.stack)..'     Turn timer: '..G.timer..'s')
 
  -- The GM's synchronized DRAW phase and turn determine visibility.
@@ -1058,7 +1061,7 @@ function R.ApplyDrawAnteFromTable(ante)
  ante=tonumber(ante)
  if not ante or ante<0 or ante~=math.floor(ante) then return false,'Invalid Ante amount.' end
  if not host() then return false,'Only the Game Master can change Ante.' end
- if G.phase~='LOBBY' then return false,'Ante can only be changed in the lobby.' end
+ if G.phase~='LOBBY' and G.phase~='SHOWDOWN' then return false,'Ante can only be changed between hands.' end
  G.ante=ante
  if ui and ui.anteGold and ui.anteSilver then
   ui.anteGold:SetText(tostring(math.floor(ante/100)))

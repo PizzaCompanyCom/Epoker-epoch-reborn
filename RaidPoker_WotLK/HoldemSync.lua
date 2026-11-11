@@ -89,7 +89,7 @@ local function broadcast()
  local session=safe(N.session)
  local board={}
  for i=1,5 do board[i]=H.board[i] and H.CardLabel(H.board[i]) or '-' end
- send('H|'..session..'|'..rev..'|'..safe(H.phase)..'|'..tostring(H.handNumber or 0)..'|'..tostring(H.pot or 0)..'|'..tostring(H.actionSeat or 0)..'|'..table.concat(board,',')..'|'..tostring(H.currentBet or 0)..'|'..tostring(H.minRaise or 0))
+ send('H|'..session..'|'..rev..'|'..safe(H.phase)..'|'..tostring(H.handNumber or 0)..'|'..tostring(H.pot or 0)..'|'..tostring(H.actionSeat or 0)..'|'..table.concat(board,',')..'|'..tostring(H.currentBet or 0)..'|'..tostring(H.minRaise or 0)..'|'..tostring(H.ante or 0))
  for i,p in ipairs(H.players or {}) do
   local flags=(p.folded and 'F' or '-')..(p.allIn and 'A' or '-')..(p.sittingOut and 'S' or '-')
   send('P|'..session..'|'..rev..'|'..i..'|'..safe(p.name)..'|'..tostring(p.stack or 0)..'|'..tostring(p.street or 0)..'|'..flags)
@@ -103,6 +103,12 @@ local function broadcast()
  send('W|'..session..'|'..rev..'|'..(#payouts>0 and table.concat(payouts,',') or '-'))
 end
 S.ForceBroadcast=function() if not N.owner or not N.active then return false end;broadcast();return true end
+-- A remote client may request a fresh public snapshot after a missed packet.
+S.Request=function()
+ if not N.active or N.owner or not N.session or not N.host or not raidMember(N.host) then return false end
+ SendAddonMessage(PREFIX,'Q|'..safe(N.session),'WHISPER',N.host)
+ return true
+end
 local function boundedNumber(v,limit)
  local n=tonumber(v)
  if not n or n<0 or n>limit or n~=math.floor(n) then return nil end
@@ -116,8 +122,11 @@ events:SetScript('OnEvent',function(self,event,...)
   return
  end
  local prefix,msg,channel,sender=...
- if prefix~=PREFIX or channel~='RAID' or type(msg)~='string' or #msg>240 then return end
- if not N.active or N.owner or sender~=N.host or not raidMember(sender) then return end
+ if prefix~=PREFIX or type(msg)~='string' or #msg>240 then return end
+ if channel=='WHISPER' and N.owner and N.active and raidMember(sender) and N.members[sender] and msg=='Q|'..safe(N.session) then
+  broadcast();return
+ end
+ if channel~='RAID' or not N.active or N.owner or sender~=N.host or not raidMember(sender) then return end
  local parts={}
  for part in (msg..'|'):gmatch('(.-)|') do parts[#parts+1]=part end
  local kind,session,rev=parts[1],parts[2],boundedNumber(parts[3],1000000000)
@@ -126,19 +135,20 @@ events:SetScript('OnEvent',function(self,event,...)
  -- previous host/session revision or public snapshot into the new lobby.
  if S.remoteSession~=session or S.remoteHost~=sender then
   S.remoteSession=session;S.remoteHost=sender
-  S.received=0;S.pending=nil;S.remote=nil
+  S.received=0;S.pending=nil;S.pendingByRevision={};S.remote=nil
  end
- if kind=='H' and #parts==10 then
+ if kind=='H' and (#parts==10 or #parts==11) then
   local hand=boundedNumber(parts[5],1000000)
   local pot=boundedNumber(parts[6],100000000)
   local turn=boundedNumber(parts[7],10)
   local currentBet=boundedNumber(parts[9],100000000)
   local minRaise=boundedNumber(parts[10],100000000)
+  local ante=boundedNumber(parts[11] or '0',100000000)
   local allowed={LOBBY=true,PREFLOP=true,FLOP=true,TURN=true,RIVER=true,SHOWDOWN=true}
-  if not hand or not pot or not turn or not currentBet or not minRaise or not allowed[parts[4]] then return end
+  if not hand or not pot or not turn or not currentBet or not minRaise or not ante or not allowed[parts[4]] then return end
   -- Ignore completed/older revisions, and never replace a newer
   -- incomplete snapshot with a delayed header from an older revision.
-  if rev<=S.received or (S.pending and rev<S.pending.revision) then return end
+  if rev<=S.received then return end
   local board={}
   for c in (parts[8]..','):gmatch('(.-),') do
    if #board>=5 then return end
@@ -146,13 +156,17 @@ events:SetScript('OnEvent',function(self,event,...)
    board[#board+1]=c
   end
   if #board~=5 then return end
-  S.pending={revision=rev,phase=parts[4],handNumber=hand,pot=pot,actionSeat=turn,currentBet=currentBet,minRaise=minRaise,board=board,players={},winners={}}
- elseif kind=='P' and #parts==8 and S.pending and S.pending.revision==rev then
+  S.pendingByRevision=S.pendingByRevision or {}
+  S.pendingByRevision[rev]={revision=rev,phase=parts[4],handNumber=hand,pot=pot,actionSeat=turn,currentBet=currentBet,minRaise=minRaise,ante=ante,board=board,players={},winners={}}
+  S.pending=S.pendingByRevision[rev]
+  for old in pairs(S.pendingByRevision) do if old<rev-4 then S.pendingByRevision[old]=nil end end
+ elseif kind=='P' and #parts==8 and S.pendingByRevision and S.pendingByRevision[rev] and rev>S.received then
+  local pending=S.pendingByRevision[rev]
   local i=boundedNumber(parts[4],6)
   local stack=boundedNumber(parts[6],100000000)
   local bet=boundedNumber(parts[7],100000000)
   if not i or i<1 or not stack or not bet or #parts[5]>30 or not parts[8]:match('^[F%-][A%-][S%-]$') then return end
-  S.pending.players[i]={name=parts[5],stack=stack,street=bet,folded=parts[8]:sub(1,1)=='F',allIn=parts[8]:sub(2,2)=='A',sittingOut=parts[8]:sub(3,3)=='S'}
+  pending.players[i]={name=parts[5],stack=stack,street=bet,folded=parts[8]:sub(1,1)=='F',allIn=parts[8]:sub(2,2)=='A',sittingOut=parts[8]:sub(3,3)=='S'}
  elseif kind=='W' and #parts==4 and S.remote and S.received==rev then
   local winners={}
   if parts[4]~='-' then
@@ -164,13 +178,18 @@ events:SetScript('OnEvent',function(self,event,...)
    end
   end
   S.remote.winners=winners
- elseif kind=='E' and #parts==4 and S.pending and S.pending.revision==rev then
+ elseif kind=='E' and #parts==4 and S.pendingByRevision and S.pendingByRevision[rev] and rev>S.received then
+  local pending=S.pendingByRevision[rev]
   local count=boundedNumber(parts[4],6)
   if count==nil then return end
-  for i=1,count do if not S.pending.players[i] then return end end
+  for i=1,count do if not pending.players[i] then return end end
   -- Reject extra seat entries: they must not leak into the next snapshot.
-  for i=count+1,6 do if S.pending.players[i] then return end end
-  S.remote=S.pending;S.received=rev;S.pending=nil;refresh()
+  for i=count+1,6 do if pending.players[i] then return end end
+  S.remote=pending;S.received=rev;S.pending=nil
+  for old in pairs(S.pendingByRevision) do if old<=rev then S.pendingByRevision[old]=nil end end
+  refresh()
+  if R.RefreshBarrensUnifiedTable then R.RefreshBarrensUnifiedTable() end
+  if R.RefreshBarrensUnifiedControls then R.RefreshBarrensUnifiedControls() end
  end
 end)
 local timer=CreateFrame('Frame')
@@ -180,10 +199,18 @@ timer:SetScript('OnUpdate',function(self,dt)
  -- Clear stale client-side state when leaving the lobby. A new session
  -- will establish its own revision sequence on the next host snapshot.
  if not N.active and (S.remote or S.pending or S.remoteSession) then
-  S.remote=nil;S.pending=nil;S.received=0;S.remoteSession=nil;S.remoteHost=nil
+  S.remote=nil;S.pending=nil;S.pendingByRevision={};S.received=0;S.remoteSession=nil;S.remoteHost=nil
   refresh()
  end
- if elapsed>=1.5 then elapsed=0;broadcast();if win and win:IsShown() then refresh() end end
+ if elapsed>=1.5 then
+  elapsed=0;broadcast()
+  if N.active and not N.owner then
+   -- Request a fresh state if an interrupted packet burst left our turn stale.
+   S.requestElapsed=(S.requestElapsed or 0)+1.5
+   if S.requestElapsed>=4.5 then S.requestElapsed=0;S.Request() end
+  else S.requestElapsed=0 end
+  if win and win:IsShown() then refresh() end
+ end end
 end)
 local old=SlashCmdList.RAIDFIVEPOKER
 if old then

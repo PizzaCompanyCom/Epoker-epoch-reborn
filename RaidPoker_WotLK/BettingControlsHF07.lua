@@ -103,7 +103,7 @@ local function build(parent,mode)
  end
  local anteX=math.floor(width/2)+8
  label(p,'Raise (Gold / Silver)',margin,-43)
- label(p,'Ante (Gold / Silver)',anteX,-43)
+ label(p,'Ante (Gold / Silver) - Game Master Only',anteX,-43)
  local rg,rs=edit(p,margin+5,-62),edit(p,margin+75,-62)
  local ag,as=edit(p,anteX+5,-62),edit(p,anteX+75,-62)
  local raise=button(p,'Apply Raise',margin+150,-61,125,function()
@@ -116,7 +116,7 @@ local function build(parent,mode)
   if orig and orig:IsEnabled() then orig:Click() end
  end,icons[3])
  local apply=button(p,'Apply Ante',anteX+150,-61,125,function()
-  if not (R.IsGameMaster and R.IsGameMaster()) then
+  if not (mode=='HOLDEM' and (not R.HoldemNetwork or not R.HoldemNetwork.active or R.HoldemNetwork.owner) or mode=='DRAW' and R.IsGameMaster and R.IsGameMaster()) then
    if R.Print then R.Print('Only the Game Master can change Ante.') end
    return
   end
@@ -126,7 +126,10 @@ local function build(parent,mode)
   if not g or not s or g<0 or s<0 or s>99 then return end
   f.anteG:SetText(tostring(g));f.anteS:SetText(tostring(s))
   if mode=='HOLDEM' then
-   if f.apply then f.apply:Click() end
+   if R.BarrensApplyAnte then
+    local ok,msg=R.BarrensApplyAnte(g*100+s)
+    if R.Print and msg then R.Print(msg) end
+   elseif f.apply then f.apply:Click() end
   else
    if R.ApplyDrawAnteFromTable then
     local ok,msg=R.ApplyDrawAnteFromTable(g*100+s)
@@ -170,7 +173,16 @@ local function build(parent,mode)
   end
   local originalRaise=src(mode,3)
   if originalRaise and originalRaise:IsEnabled() then raise:Enable() else raise:Disable() end
-  local isGM=R.IsGameMaster and R.IsGameMaster()
+  local isGM
+  if mode=='HOLDEM' then
+   local n=R.HoldemNetwork
+   isGM=not n or not n.active or (n.owner and n.host==UnitName('player'))
+   local h=R.Holdem
+   isGM=isGM and h and (h.phase=='LOBBY' or h.phase=='SHOWDOWN')
+  else
+   local g=R.G
+   isGM=R.IsGameMaster and R.IsGameMaster() and g and (g.phase=='LOBBY' or g.phase=='SHOWDOWN')
+  end
   if isGM then apply:Enable();ag:EnableMouse(true);as:EnableMouse(true)
   else apply:Disable();ag:EnableMouse(false);as:EnableMouse(false) end
   local f=fields(mode)

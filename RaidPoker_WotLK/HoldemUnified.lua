@@ -75,6 +75,25 @@ function R.BarrensUnifiedAction(action,amount)
  if sent==false then return false,why or 'Network action rejected' end
  return true
 end
+-- Ante and starting stack are Game Master settings, editable only between hands.
+function R.BarrensApplyTableSettings(ante,stack)
+ ante=tonumber(ante);stack=tonumber(stack)
+ if not ante or ante<0 or ante~=math.floor(ante) or ante>100000000 then return false,'Invalid Ante.' end
+ if not stack or stack<1 or stack~=math.floor(stack) or stack>100000000 then return false,'Invalid starting stack.' end
+ if H.phase~='LOBBY' and H.phase~='SHOWDOWN' then return false,'Change settings between hands.' end
+ local n=network()
+ if mode()=='NETWORK' and (not n or not n.active or not host()) then return false,'Game Master only.' end
+ H.ante=ante
+ if R.HoldemMultiplayer and mode()=='NETWORK' then R.HoldemMultiplayer.initialStack=stack end
+ if R.HoldemSync and R.HoldemSync.ForceBroadcast and mode()=='NETWORK' then R.HoldemSync.ForceBroadcast() end
+ U.Refresh()
+ return true,'Ante and starting stack updated.'
+end
+function R.BarrensApplyAnte(ante)
+ local m=R.HoldemMultiplayer
+ local stack=(m and m.initialStack) or 1000
+ return R.BarrensApplyTableSettings(ante,stack)
+end
 function R.BarrensUnifiedStart()
  if mode()=='SOLO' then
   if not (R.HoldemSoloDebug and R.HoldemSoloDebug.active) then return false,'Open Solo Debug to start a local game.' end

@@ -335,7 +335,7 @@ local function build()
   if R.BarrensUnifiedStart then ok,err=R.BarrensUnifiedStart() elseif H.StartPreviewHand then ok,err=H.StartPreviewHand() end
   if ok==false and R.Print then R.Print(err or 'Cannot start game') end
  end)
- startGame:SetPoint('TOPRIGHT',f,'TOPRIGHT',-332,-16)
+ startGame:SetPoint('TOPLEFT',f,'TOPLEFT',420,-16)
  local leaveTable=button(f,'Leave Table',115,25,function()
   local n=R.HoldemNetwork
   if n and n.active then
@@ -551,6 +551,10 @@ local function update()
  for i=math.max(1,#s.log-2),#s.log do if s.log[i] then lines[#lines+1]=s.log[i] end end
  -- The hand history is displayed in Game Controls.
 
+end
+-- Public repaint hook: do not require closing and reopening Poker Table.
+function R.RefreshBarrensUnifiedTable()
+ if f and f:IsShown() then update() end
 end
 local previousRefresh=H.Refresh
 function H.Refresh()

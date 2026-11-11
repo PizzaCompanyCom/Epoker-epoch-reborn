@@ -34,6 +34,10 @@ local function publishSeats()
  H.phase='LOBBY';H.board={};H.pot=0;H.actionSeat=nil
  if R.HoldemSync and R.HoldemSync.ForceBroadcast then R.HoldemSync.ForceBroadcast() end
  if N.BroadcastTableInfo then N.BroadcastTableInfo() end
+ -- Update the already-open GM Poker Table immediately when the roster changes.
+ if R.RefreshBarrensUnifiedTable then R.RefreshBarrensUnifiedTable() end
+ if R.HoldemUnified and R.HoldemUnified.Refresh then R.HoldemUnified.Refresh() end
+ if H.Refresh then H.Refresh() end
 end
 M.PublishSeats=publishSeats
 local function refresh()

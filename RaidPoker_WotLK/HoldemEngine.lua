@@ -1,7 +1,7 @@
 -- Raid Poker 1.8.0-alpha3: LOCAL TEST ENGINE ONLY. No raid messages or real balances.
 local R=RPoker
 if not R then return end
-local H={phase='LOBBY',players={},board={},deck={},dealer=0,smallBlind=5,bigBlind=10,handNumber=0,pot=0,log={},sidePots={},winners={}}
+local H={phase='LOBBY',players={},board={},deck={},dealer=0,smallBlind=5,bigBlind=10,ante=0,handNumber=0,pot=0,log={},sidePots={},winners={}}
 R.Holdem=H
 local suits={'S','H','D','C'}
 local function notify() if H.Refresh then H.Refresh() end end
@@ -190,6 +190,17 @@ function H.StartPreviewHand()
  shuffle()
  if funded==2 then H.smallBlindSeat=H.dealer;H.bigBlindSeat=nextFunded(H.dealer)
  else H.smallBlindSeat=nextFunded(H.dealer);H.bigBlindSeat=nextFunded(H.smallBlindSeat) end
+ -- Ante is a dead contribution: it enters the pot but not the street bet.
+ local ante=math.max(0,math.floor(tonumber(H.ante) or 0))
+ if ante>0 then
+  for _,p in ipairs(H.players) do
+   if p.dealt then
+    local paid=math.min(p.stack,ante)
+    p.stack=p.stack-paid;p.committed=p.committed+paid;H.pot=H.pot+paid
+    if p.stack==0 then p.allIn=true end
+   end
+  end
+ end
  commit(H.smallBlindSeat,H.smallBlind);commit(H.bigBlindSeat,H.bigBlind)
  H.currentBet=H.players[H.bigBlindSeat].street;H.minRaise=H.bigBlind;H.lastFullRaise=H.bigBlind
  for round=1,2 do local i=H.dealer;for j=1,funded do i=nextFunded(i);H.players[i].hole[#H.players[i].hole+1]=draw() end end

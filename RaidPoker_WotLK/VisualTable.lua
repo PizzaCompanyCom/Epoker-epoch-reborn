@@ -665,7 +665,7 @@ function R.BuildGame(main)
   general:Raise()
   arrangeGeneral(general)
  end
- local generalButton=btn(f,'Open General',468,-15,108,showGeneral)
+ local generalButton=btn(f,'Open General',486,-15,108,showGeneral)
  generalButton:SetFrameStrata('DIALOG')
  generalButton:SetFrameLevel(f:GetFrameLevel()+50)
  local function toggleSettings()
@@ -677,21 +677,21 @@ function R.BuildGame(main)
   opt:Show()
   opt:Raise()
  end
- local settingsButton=btn(f,'Settings Table',580,-15,119,toggleSettings)
- local startGameButton=btn(f,'Start Game',333,-15,120,function()
+ local settingsButton=btn(f,'Settings Table',602,-15,115,toggleSettings)
+ local startGameButton=btn(f,'Start Game',366,-15,112,function()
   if not (R.G and R.G.solo) and R.ActiveTableID and R.ActiveTableID()~='' and R.IsPokerHost and not R.IsPokerHost() then
    StaticPopup_Show('EPOKER_GM_START_WARNING',R.GameMasterName and R.GameMasterName() or 'Unknown')
    return
   end
   if R.StartPokerHandFromTable then R.StartPokerHandFromTable() end
  end)
- local closeBotsButton=btn(f,'Close Bots',22,-15,123,function()
+ local closeBotsButton=btn(f,'Close Bots',12,-15,112,function()
   if R.SoloStop then R.SoloStop() end
  end)
-  local soloBotsButton=btn(f,'Solo Bots',157,-15,125,function()
+  local soloBotsButton=btn(f,'Solo Bots',130,-15,112,function()
    if R.ToggleDebugPanel then R.ToggleDebugPanel() end
  end)
- local leaveTableButton=btn(f,'Leave Table',292,-46,128,function()
+ local leaveTableButton=btn(f,'Leave Table',248,-15,112,function()
   if R.G and R.G.solo then
    if R.SoloStop then R.SoloStop() end
   elseif R.ActiveTableID and R.ActiveTableID()~='' then

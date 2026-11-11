@@ -449,8 +449,21 @@ local function build()
  local function fieldLabel(text,x)
   local t=txt(frame,text,'GameFontHighlightSmall');t:SetPoint('TOPLEFT',frame,x,-540)
  end
- fieldLabel('Raise (Gold / Silver)',26);fieldLabel('Ante (Gold / Silver)',258);fieldLabel('Starting Stack (G / S)',489)
- local apply=button(frame,'Apply',90,31,function()
+ fieldLabel('Raise (Gold / Silver)',26);fieldLabel('Ante (Gold / Silver) - Game Master Only',258);fieldLabel('Starting Stack (G / S)',489)
+ -- Keep the Ante inputs synchronized with the latest public table state.
+ local lastAnte=nil
+ local anteTicker=CreateFrame('Frame',nil,frame)
+ local anteElapsed=0
+ anteTicker:SetScript('OnUpdate',function(self,dt)
+  anteElapsed=anteElapsed+dt;if anteElapsed<0.5 then return end;anteElapsed=0
+  local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot()
+  local ante=snap and snap.ante
+  if ante==nil and R.Holdem then ante=R.Holdem.ante end
+  if ante~=nil and ante~=lastAnte and not anteGold:HasFocus() and not anteSilver:HasFocus() then
+   lastAnte=ante;anteGold:SetText(tostring(math.floor(ante/100)));anteSilver:SetText(tostring(ante%100))
+  end
+ end)
+local apply=button(frame,'Apply',90,31,function()
   local ante=anteGold:GetNumber()*100+anteSilver:GetNumber()
   local stack=stackGold:GetNumber()*100+stackSilver:GetNumber()
   -- Settings are forwarded only to an existing GM configuration API; never mutate the engine directly.
