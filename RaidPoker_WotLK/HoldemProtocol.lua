@@ -59,6 +59,8 @@ local function hostAction(sender,seat,action,amount,seq)
  return accepted
 end
 local function sendAction(action,amount)
+ -- Normalize at the transport boundary too (other UI panels call this directly).
+ if action~='RAISE' then amount=0 end
  if not N.active or N.owner or not raidMember(N.host) then note('Join a remote lobby first');return false,'Join a remote lobby first' end
  local seat
  -- Seat indices must be assigned by host. The public mirror is not authoritative.

@@ -53,6 +53,9 @@ function R.BarrensUnifiedHole(seat,s)
  return nil
 end
 function R.BarrensUnifiedAction(action,amount)
+ -- The UI always supplies the raise field, even for Check/Call/Fold/All-In.
+ -- The multiplayer protocol requires zero for every non-raise action.
+ if action~='RAISE' then amount=0 end
  if mode()=='SOLO' then return H.Action(action,amount) end
  local n=network()
  if not n or not n.active then return false,'Create or join a network lobby first' end

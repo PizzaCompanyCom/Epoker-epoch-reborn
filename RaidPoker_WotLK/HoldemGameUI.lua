@@ -473,7 +473,7 @@ local function build()
  for i=1,5 do
   local act=acts[i]
   local actionIcons={'Interface\\Icons\\INV_Shield_06','Interface\\Icons\\INV_Misc_Coin_01','Interface\\Icons\\Ability_Warrior_Charge','Interface\\Icons\\Ability_Creature_Cursed_02','Interface\\Icons\\INV_Misc_Bag_10'}
-  local b=iconButton(frame,names[i],actionIcons[i],134,34,function()local amount=raiseGold:GetNumber()*100+raiseSilver:GetNumber();local ok,why=performAction(act,amount);message(ok,why);if ok and R.AnnounceLocalPokerAction then R.AnnounceLocalPokerAction('HOLDEM',act,amount)end end)
+  local b=iconButton(frame,names[i],actionIcons[i],134,34,function()local amount=raiseGold:GetNumber()*100+raiseSilver:GetNumber();local ok,why=performAction(act,act=='RAISE' and amount or 0);message(ok,why);if ok and R.AnnounceLocalPokerAction then R.AnnounceLocalPokerAction('HOLDEM',act,amount)end end)
   b:SetPoint('TOPLEFT',frame,26+(i-1)*148,-479);buttons[i]=b
   if i==1 then for j=1,b:GetNumRegions() do local region=select(j,b:GetRegions());if region and region.GetTexture and region:GetTexture()=='Interface\\Icons\\INV_Shield_05' then region:ClearAllPoints();region:SetPoint('LEFT',b,'LEFT',9,0) end end end
  end
