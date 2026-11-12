@@ -4,7 +4,7 @@
 <img width="200px" src="Screenshots/Wow%202026-11-10%2009-21-04-394.jpg" alt="описание"/> <img width="200px" src="Screenshots/Wow%202026-11-10%2009-21-51-805.jpg" alt="описание"/>
 <img width="200px" src="Screenshots/Wow%202026-11-10%2009-23-52-145.jpg" alt="описание"/> <img width="200px" src="Screenshots/Wow%202026-11-10%2009-24-24-148.jpg" alt="описание"/>
 
-**EpokerWoW Raid v2.1.0**
+**EpokerWoW Raid v2.2.0**
 
 EpokerWoW Raid is a multiplayer poker addon for World of Warcraft 3.3.5a (TrinityCore), designed for playing poker with friends in a raid group.
 
