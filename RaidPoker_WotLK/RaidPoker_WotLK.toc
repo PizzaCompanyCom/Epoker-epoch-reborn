@@ -1,10 +1,11 @@
 ## Interface: 30300
 ## Title: Raid Poker WotLK
-## Notes: EpokerWoW Raid 2.1 - 5-Card Draw and The Barrens Hold'em for WoW 3.3.5a.
+## Notes: EpokerWoW Raid 2.2 - 5-Card Draw and The Barrens Hold'em for WoW 3.3.5a.
 ## Author: Raid Poker Development
-## Version: 2.1.0
+## Version: 2.2.0
 ## SavedVariables: RaidPokerHoldemRecoveryDB, RaidPokerWotLKDB
 Core.lua
+PokerAI.lua
 Game.lua
 EmotesAnnouncements.lua
 Economy.lua

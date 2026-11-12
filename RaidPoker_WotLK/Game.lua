@@ -869,20 +869,14 @@ local function botStep()
  if GetTime()<botAt then return end
  botAt=0
  if G.phase=='DRAW' then
-  -- Bots exchange zero to three random cards, without inspecting the human hand.
-  local picks={};local n=math.random(0,3)
-  while #picks<n do local v=math.random(1,5);local exists=false
-   for _,k in ipairs(picks) do if k==v then exists=true end end
-   if not exists then table.insert(picks,v) end
-  end
-  hostAction(p.name,'DRAW',table.concat(picks,','))
+  local picks=R.PokerAI and R.PokerAI.DrawExchange(p.cards or {}) or ''
+  hostAction(p.name,'DRAW',picks)
  else
   local owed=math.max(0,G.bet-(p.paid or 0))
-  if owed==0 then hostAction(p.name,'CHECK','0')
-  elseif owed>=p.balance then hostAction(p.name,'CALL','0')
-  elseif math.random(1,100)<=(G.botStyle=='AGGRESSIVE' and 4 or G.botStyle=='PASSIVE' and 20 or 12) then hostAction(p.name,'FOLD','0')
-  elseif G.botStyle=='AGGRESSIVE' and p.balance>owed+10 and math.random(1,100)<=25 then hostAction(p.name,'RAISE',tostring(owed+math.min(30,p.balance-owed)))
-  else hostAction(p.name,'CALL','0') end
+  local action,value
+  if R.PokerAI then action,value=R.PokerAI.DrawBet(p,owed,G.pot,G.botStyle) end
+  if not action then action=owed==0 and 'CHECK' or 'CALL';value='0' end
+  hostAction(p.name,action,value or '0')
  end
 end
 function R.SoloStart(count)

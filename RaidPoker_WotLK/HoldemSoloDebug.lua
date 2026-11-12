@@ -57,11 +57,16 @@ local function botStep()
  if not i or i==1 or H.phase=='SHOWDOWN' or H.phase=='LOBBY' then return end
  local p=H.players[i];if not p then return end
  local due=math.max(0,(H.currentBet or 0)-(p.street or 0))
- -- Deterministic legal, low-risk test behavior: check if possible, otherwise call or fold.
- if due==0 then act('CHECK')
- elseif due>=p.stack and p.stack>0 then act('ALLIN')
- elseif due>math.floor(p.stack*0.6) then act('FOLD')
- else act('CALL') end
+ -- AI decisions are strictly local and pass through the existing legal action API.
+ local action,amount
+ if R.PokerAI then action,amount=R.PokerAI.HoldemBet(p,H.board,due,H.pot,H.minRaise) end
+ if not action then action=due==0 and 'CHECK' or (due>=p.stack and 'ALLIN' or 'CALL') end
+ local ok,msg=H.Action(action,amount)
+ if not ok then
+  local fallback=due==0 and 'CHECK' or (due>=p.stack and 'ALLIN' or 'CALL')
+  H.Action(fallback)
+ end
+ update()
 end
 local function build()
  if win then return end
