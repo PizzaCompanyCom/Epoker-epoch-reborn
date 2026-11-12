@@ -1,0 +1,10 @@
+Raid 5-Card Poker WotLK v1.7.13 SETTINGS & THEMES HOTFIX
+
+Install over v1.7.12: extract the RaidPoker_WotLK folder into World of Warcraft/Interface/AddOns and overwrite existing files. Run /reload.
+
+Changes:
+- Repositioned Table Theme, Background Themes, Sound Options and Winner Popup in Settings, avoiding overlapping controls.
+- Re-encoded eight TGA backgrounds to 1024x1024 (power-of-two texture dimensions required by WoW 3.3.5a).
+- No changes to gameplay logic.
+
+Please test switching from Classic Dark to Ironforge in game.

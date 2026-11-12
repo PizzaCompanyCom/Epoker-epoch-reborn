@@ -1,0 +1,12 @@
+Raid 5-Card Poker WotLK v1.6.2 - Interface Cleanup
+WoW 3.3.5a / TrinityCore
+
+- Removed the redundant standalone Balances window and its launcher.
+- Player Management is the single place for balance and player status administration.
+- Removed duplicate balance input from Game Master Controls.
+- Added Player Management shortcut to Game Master Controls.
+- Kept balance announcements, table balances, timer controls, and poker mechanics.
+- /poker balances remains as a backwards-compatible alias to Player Management.
+- All previous assets and v1.6.1 Automatic Busted behavior are preserved.
+
+Install: replace Interface/AddOns/RaidPoker_WotLK and /reload.

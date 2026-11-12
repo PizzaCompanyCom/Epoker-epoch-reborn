@@ -1,0 +1,26 @@
+Raid 5-Card Poker WotLK v1.6.3 — Multi-Table Browser
+WoW 3.3.5a TrinityCore, English interface.
+
+NEW
+- /poker tables opens Table Browser.
+- Create Table with a custom 1–32 character name.
+- Multiple Game Masters may host independent tables within the same raid.
+- Unique Table IDs route JOIN, SYNC, STATE, HAND, ACT and administrative messages.
+- Refresh broadcasts discovery; active Game Masters advertise periodically.
+- Join an available table from Table Browser (up to 10 players).
+- Leave between hands; Game Master must transfer GM or close table.
+- Close Table (GM only), between hands; game history remains saved.
+- Current table name shown on poker interface.
+- Existing Player Management and automatic Busted retained.
+
+LIMITS
+- One active table per character at a time.
+- Players can join only during LOBBY, not mid-hand.
+- The table directory is discovered live from online raid Game Masters.
+- All raid members must upgrade to v1.6.3: network protocol R5CP03.
+- Active hand cannot survive a client reload; lobby/showdown snapshot recovery only.
+- Game history is retained in existing SavedVariables and labeled by table.
+- Gold/Silver are virtual; no automatic in-game currency transfers.
+
+INSTALL
+Replace Interface/AddOns/RaidPoker_WotLK and /reload.

@@ -1,0 +1,8 @@
+Raid 5-Card Poker v1.7.6 HOTFIX PATCH (from v1.7.5)
+
+Extract into World of Warcraft/Interface/AddOns/ and overwrite the RaidPoker_WotLK files.
+This is an incremental patch, not a complete addon. Requires v1.7.5 already installed.
+
+Fix: defer theme application until after the poker game UI is initialized.
+All eight backgrounds and settings are retained.
+If the issue persists, enable /console scriptErrors 1 and /reload, then send the error screenshot.

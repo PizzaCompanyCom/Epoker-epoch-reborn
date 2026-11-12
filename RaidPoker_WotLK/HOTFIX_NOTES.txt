@@ -1,0 +1,10 @@
+EpokerWoW Raid v1.9.0-RC1 - Winner and Preset Icons Hotfix
+
+Install on all players over the current RC1 build.
+
+- HoldemSync: preserve winner payouts through successive Showdown snapshots and refresh UI after W packet.
+- HoldemTable: play winner sound once when actual payout arrives (including remote clients).
+- BettingControlsHF07: coin_03 for +10s/+50s on both Poker Tables.
+- HoldemGameUI: matching icons on all six main-window presets.
+
+WoW multiplayer testing is required.

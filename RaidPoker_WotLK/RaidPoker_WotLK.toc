@@ -1,0 +1,61 @@
+## Interface: 30300
+## Title: Raid Poker WotLK
+## Notes: EpokerWoW Raid 2.2 - 5-Card Draw and The Barrens Hold'em for WoW 3.3.5a.
+## Author: Raid Poker Development
+## Version: 2.2.0
+## SavedVariables: RaidPokerHoldemRecoveryDB, RaidPokerWotLKDB
+Core.lua
+PokerAI.lua
+Game.lua
+EmotesAnnouncements.lua
+Economy.lua
+Enhancements.lua
+Management.lua
+Experience.lua
+VisualTable.lua
+TablePolish.lua
+Table7.lua
+
+PlayerManagement.lua
+TableBrowser.lua
+Sounds.lua
+
+HoldemEngine.lua
+HoldemPreview.lua
+HoldemTable.lua
+HoldemGameUI.lua
+GameModeLauncher.lua
+HoldemNetwork.lua
+HoldemSoloDebug.lua
+HoldemSync.lua
+HoldemProtocol.lua
+HoldemProtocolCommandFix.lua
+HoldemMultiplayer.lua
+HoldemManagement.lua
+HoldemNetworkTable.lua
+HoldemUnified.lua
+HoldemTurnTimer.lua
+HoldemLeaderControls.lua
+HoldemRecords.lua
+HoldemOperations.lua
+HoldemSeatInspector.lua
+HoldemControlCenter.lua
+HoldemWindowLayers.lua
+HoldemAdminBridge.lua
+
+HoldemSessionRecovery.lua
+HoldemPreflight.lua
+
+HoldemTableDesk.lua
+
+HoldemIntegration.lua
+
+PeerVersions.lua
+
+Hotfix19.lua
+
+Hotfix20.lua
+BettingControlsHF07.lua
+SoundEventsFix30.lua
+
+V19PreviewUI.lua
