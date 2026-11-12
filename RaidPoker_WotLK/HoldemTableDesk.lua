@@ -141,9 +141,9 @@ local function build()
  text(W,370,-336,350,'TABLE WORKFLOW','GameFontNormal')
  button(W,'Hand Preflight',370,-359,170,function()open('OpenBarrensPreflight')end)
  button(W,'Player Management',552,-359,182,function()open('OpenBarrensManagement')end)
- button(W,'Network Lobby',370,-392,170,function()open('OpenBarrensNetworkLobby')end)
+ button(W,'Player Management',370,-392,170,function()open('OpenBarrensManagement')end)
  button(W,'Multiplayer Seats',552,-392,182,function()open('OpenBarrensMultiplayer')end)
- button(W,'GM Transfer',370,-425,170,function()open('OpenBarrensGMTransfer')end)
+ button(W,'Transfer GM',370,-425,170,function()open('OpenBarrensManagement')end)
  button(W,'Session Recovery',552,-425,182,function()open('OpenBarrensSessionRecovery')end)
  text(W,20,-494,700,'EXISTING WINDOWS AND VISUAL CONTROLS','GameFontNormal')
  button(W,'Main Game Window',20,-521,170,function()open('OpenBarrensControls')end)
@@ -153,14 +153,6 @@ local function build()
  button(W,'Betting Activity',20,-555,170,function()open('OpenBarrensBettingActivity')end)
  button(W,'Hand History',201,-555,170,function()open('OpenBarrensHandHistory')end)
  button(W,'Rules / Help',382,-555,170,function()open('OpenBarrensGuide','HELP')end)
- button(W,'Force Seat Sync',563,-555,170,function()
-  if not active() then say('Only the idle Game Master can sync seats');return end
-  local bridge=R.HoldemAdminBridge
-  if bridge and bridge.BroadcastSeats then
-   local ok,err=bridge.BroadcastSeats()
-   if ok==false then say(tostring(err or 'Sync refused'))end
-  else say('Seat sync module unavailable')end
- end)
  button(W,'Refresh',20,-600,170,R.RefreshBarrensTableDesk)
  text(W,201,-606,520,'No hidden cards or deck state are sent by these controls.','GameFontHighlightSmall')
  local auditText=text(W,20,-643,710,'','GameFontHighlightSmall')

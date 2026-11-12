@@ -3,7 +3,7 @@
 local R=RPoker
 if not R or not R.Holdem or not R.HoldemNetwork then return end
 local H,N=R.Holdem,R.HoldemNetwork
-local M={seats={},pendingSeats={},audit={},initialStack=1000,active=false,hostHand=0}
+local M={seats={},audit={},initialStack=1000,active=false,hostHand=0}
 R.HoldemMultiplayer=M
 local frame,roster,summary,amountBox
 local function playerName() return UnitName('player') or '' end
@@ -61,33 +61,6 @@ function M.Assign(name)
  audit('SEAT '..name..(stack==0 and ' [BUSTED]' or ''))
  publishSeats();refresh();return true
 end
--- Queue an eligible late joiner without changing live seat indices or cards.
-function M.QueueSeat(name)
- if not host() then return false,'Game Master only' end
- if not eligible(name) then return false,'Player must join lobby and raid' end
- if name~=playerName() and R.PokerVersionMatches and R.PokerVersionMatches(name)~=true then
-  return false,'Incompatible or unknown addon version: '..name
- end
- for _,seat in ipairs(M.seats) do if seat.name==name then return true end end
- for _,queued in ipairs(M.pendingSeats) do if queued==name then return true,'WAIT' end end
- if #M.seats+#M.pendingSeats>=6 then return false,'Table full (6 seats)' end
- M.pendingSeats[#M.pendingSeats+1]=name
- audit('WAITING '..name..' (next hand)')
- refresh()
- return true,'WAIT'
-end
-function M.SeatPending()
- if not host() or not waiting() then return false,'Finish the hand first' end
- local queue=M.pendingSeats
- M.pendingSeats={}
- for _,name in ipairs(queue) do
-  if eligible(name) and #M.seats<6 then
-   local ok,why=M.Assign(name)
-   if not ok then audit('SEAT FAILED '..name..': '..tostring(why)) end
-  end
- end
- return true
-end
 function M.Remove(name)
  if not host() or not waiting() then return false,'Game Master / idle hand required' end
  for i,s in ipairs(M.seats) do if s.name==name then table.remove(M.seats,i);audit('REMOVE '..name);publishSeats();refresh();return true end end
@@ -135,7 +108,6 @@ end
 function M.StartHand()
  if not host() then return false,'Game Master only' end
  if not waiting() then return false,'Hand already running' end
- M.SeatPending()
  if #M.seats<2 then return false,'At least two seated players required' end
  local funded=0
  for _,s in ipairs(M.seats) do if not s.sittingOut and s.stack>0 and eligible(s.name) then funded=funded+1 end end

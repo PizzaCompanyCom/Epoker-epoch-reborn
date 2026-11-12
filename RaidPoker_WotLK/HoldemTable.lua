@@ -15,7 +15,7 @@ local function prefs()
  for k,v in pairs(defaults) do if p[k]==nil then p[k]=v end end
  return p
 end
-local effects={sprites={},clock=0,previous=nil,options=nil,buttons={},lastActionSeat=nil,turnSeconds=0,announcedHand=nil}
+local effects={sprites={},clock=0,previous=nil,options=nil,buttons={},lastActionSeat=nil,turnSeconds=0,announcedHand=nil,winnerSoundKey=nil}
 local feltArea,coinTarget,seatWidgets
 local function playSound(kind)
  if not prefs().sound then return end
@@ -421,7 +421,8 @@ local function update()
     local xy=({{-305,-145},{-305,0},{-305,145},{305,-145},{305,0},{305,145}})[i]
     if xy then startCoins(coinTarget[1],coinTarget[2],xy[1],xy[2],gain) end
    end
-   if next(s.winners or {}) then playSound('win') end
+   -- Winner packet may arrive after the showdown header on remote clients.
+   -- Sound is handled below when actual winner data becomes available.
   end
  elseif prev and prev.handNumber~=s.handNumber then
   clearCoins()
@@ -431,6 +432,17 @@ local function update()
     if xy then startCoins(xy[1],xy[2],coinTarget[1],coinTarget[2],p.committed) end
    end
   end
+ end
+ -- On remote clients winner payouts arrive separately from the phase update.
+ -- Play the victory sound once when winners actually become available.
+ if s.phase=='SHOWDOWN' and next(s.winners or {}) then
+  local winnerKey=tostring(s.handNumber or 0)..':'..tostring((R.HoldemNetwork and R.HoldemNetwork.session) or 'solo')
+  if effects.winnerSoundKey~=winnerKey then
+   effects.winnerSoundKey=winnerKey
+   playSound('win')
+  end
+ elseif s.phase=='LOBBY' or s.phase=='PREFLOP' then
+  effects.winnerSoundKey=nil
  end
  effects.previous={handNumber=s.handNumber,phase=s.phase,players={},winners=s.winners}
  for i,p in ipairs(s.players) do effects.previous.players[i]={committed=p.committed or 0} end

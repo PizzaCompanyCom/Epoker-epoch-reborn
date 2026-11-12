@@ -178,6 +178,8 @@ events:SetScript('OnEvent',function(self,event,...)
    end
   end
   S.remote.winners=winners
+  if R.RefreshBarrensUnifiedTable then R.RefreshBarrensUnifiedTable() end
+  if R.RefreshBarrensUnifiedControls then R.RefreshBarrensUnifiedControls() end
  elseif kind=='E' and #parts==4 and S.pendingByRevision and S.pendingByRevision[rev] and rev>S.received then
   local pending=S.pendingByRevision[rev]
   local count=boundedNumber(parts[4],6)
@@ -185,6 +187,12 @@ events:SetScript('OnEvent',function(self,event,...)
   for i=1,count do if not pending.players[i] then return end end
   -- Reject extra seat entries: they must not leak into the next snapshot.
   for i=count+1,6 do if pending.players[i] then return end end
+  -- Winner payouts arrive in a separate W packet after E. Keep the
+  -- previous showdown result for the same hand instead of flashing empty.
+  if S.remote and S.remote.handNumber==pending.handNumber and
+     S.remote.phase=='SHOWDOWN' and pending.phase=='SHOWDOWN' then
+   pending.winners=S.remote.winners or {}
+  end
   S.remote=pending;S.received=rev;S.pending=nil
   for old in pairs(S.pendingByRevision) do if old<=rev then S.pendingByRevision[old]=nil end end
   refresh()

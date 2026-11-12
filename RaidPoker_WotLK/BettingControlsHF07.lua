@@ -162,7 +162,7 @@ local function build(parent,mode)
     f.raiseG:SetText(rg:GetText());f.raiseS:SetText(rs:GetText())
     p.lastG=rg:GetText();p.lastS=rs:GetText()
    end
-  end,'Interface\\Icons\\INV_Misc_Coin_01')
+  end,(i<=2 and 'Interface\\Icons\\INV_Misc_Coin_03' or 'Interface\\Icons\\INV_Misc_Coin_01'))
  end
  local timer=0
  p:SetScript('OnUpdate',function(self,elapsed)

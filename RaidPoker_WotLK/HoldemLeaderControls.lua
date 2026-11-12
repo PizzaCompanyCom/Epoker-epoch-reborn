@@ -10,7 +10,9 @@ end
 local icons={
  ['Player Management']='Interface\\Icons\\INV_Misc_GroupLooking',
  ['Transfer Game Master']='Interface\\Icons\\INV_Misc_Head_Human_01',
- ['Force Seat Sync']='Interface\\Icons\\INV_Misc_Note_01',
+ ['End Hand & Determine Winner']='Interface\\Icons\\INV_Misc_Coin_01',
+ ['Cancel Hand']='Interface\\Icons\\Ability_Rogue_FeignDeath',
+ ['Resend Winner']='Interface\\Icons\\INV_Misc_Note_01',
  ['Turn Timer']='Interface\\Icons\\INV_Misc_PocketWatch_01',
  ['Announce Balances']='Interface\\Icons\\INV_Misc_Coin_01',
  ['Announce Winner']='Interface\\Icons\\INV_Misc_Coin_01',
@@ -82,43 +84,61 @@ end
 local function build()
  if W then return end
  W=CreateFrame('Frame','RaidPokerBarrensLeaderControls',UIParent)
- W:SetSize(540,615);W:SetPoint('CENTER',UIParent,'CENTER',270,0)
+ W:SetSize(540,650);W:SetPoint('CENTER',UIParent,'CENTER',270,0)
  W:SetFrameStrata('FULLSCREEN_DIALOG');W:SetMovable(true);W:EnableMouse(true)
  W:SetClampedToScreen(true);W:RegisterForDrag('LeftButton')
  W:SetScript('OnDragStart',function(self)self:StartMoving()end)
  W:SetScript('OnDragStop',function(self)self:StopMovingOrSizing()end)
  W:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=24,insets={left=8,right=8,top=8,bottom=8}})
- local title=label(W,'Game master control',20,-20,445);title:SetFontObject('GameFontNormalLarge')
+ local title=label(W,'Game Master Controls',20,-20,445);title:SetFontObject('GameFontNormalLarge')
  button(W,'X',500,-16,26,function()W:Hide()end)
  local function desc(y,message) local t=label(W,message,225,y,290);t:SetTextColor(.85,.82,.7) end
- button(W,'Player Management',20,-58,200,function()if R.OpenBarrensManagement then R.OpenBarrensManagement()end end)
- desc(-62,'Manage players, balances and seating.')
- button(W,'Transfer Game Master',20,-94,200,function()if R.OpenBarrensGMTransfer then R.OpenBarrensGMTransfer()end end)
- desc(-98,'Transfer table authority to another player.')
- button(W,'Force Seat Sync',20,-130,200,function()
-  if not gm() then warn('Game Master only.');return end
-  local a=R.HoldemAdminBridge
-  if a and a.BroadcastSeats then local ok,err=a.BroadcastSeats();if not ok then warn(err or 'Sync unavailable') end
-  else warn('Seat synchronization unavailable') end
- end)
- desc(-134,'Resend the public seating state to players.')
- W.timerButton=button(W,'Turn Timer: 30s',20,-166,200,function()
+ local function inactiveTip(b,title,reason)
+  b:SetScript('OnEnter',function(self)
+   GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText(title)
+   GameTooltip:AddLine(reason(),1,1,1,true);GameTooltip:Show()
+  end)
+  b:SetScript('OnLeave',function()GameTooltip:Hide()end)
+ end
+ local function active() return H.phase~='LOBBY' and H.phase~='SHOWDOWN' end
+ local finishBtn=button(W,'End Hand & Determine Winner',20,-58,200,function()end)
+ desc(-62,'Finish the hand and determine the winner.')
+ local cancelBtn=button(W,'Cancel Hand',20,-94,200,function()end)
+ desc(-98,'Cancel the hand and refund all bets.')
+ local resendBtn=button(W,'Resend Winner',20,-130,200,function()announce('WINNER','RAID')end)
+ desc(-134,'Resend the last winner result to players.')
+ button(W,'Player Management',20,-166,200,function()if R.OpenBarrensManagement then R.OpenBarrensManagement()end end)
+ desc(-170,'Manage players, balances and seating.')
+ local transferBtn=button(W,'Transfer Game Master',20,-202,200,function()if R.OpenBarrensManagement then R.OpenBarrensManagement()end end)
+ desc(-206,'Select a player in Player Management.')
+ W.timerButton=button(W,'Turn Timer: 30s',20,-238,200,function()
   if R.CycleBarrensTurnTimer then R.CycleBarrensTurnTimer() end
   if R.RefreshBarrensTimerSetting then R.RefreshBarrensTimerSetting() end
  end,'Turn Timer')
- desc(-170,'Cycle: 15s / 30s / 60s / OFF.')
- label(W,'ANNOUNCEMENTS  -  Select a channel for each message',20,-234,495)
+ desc(-242,'Cycle: 15s / 30s / 60s / OFF.')
+ -- No engine-level safe force-finish/refund API exists for multiplayer Hold'em yet.
+ -- Never expose an action that would corrupt the pot or side pots.
+ finishBtn:Disable();cancelBtn:Disable()
+ inactiveTip(finishBtn,'End Hand & Determine Winner',function()return 'Unavailable in Hold\'em until safe pot settlement is implemented.' end)
+ inactiveTip(cancelBtn,'Cancel Hand',function()return 'Unavailable in Hold\'em until a synchronized refund is implemented.' end)
+ inactiveTip(transferBtn,'Transfer Game Master',function()return active() and 'Cannot transfer Game Master during an active hand. Finish the hand first.' or 'Select a player in Player Management, then click Transfer GM.' end)
+ inactiveTip(resendBtn,'Resend Winner',function()return 'Announces the last winner in raid chat.' end)
+ W:SetScript('OnShow',function()
+  if gm() and not active() then transferBtn:Enable() else transferBtn:Disable() end
+  if gm() and H.phase=='SHOWDOWN' then resendBtn:Enable() else resendBtn:Disable() end
+ end)
+ label(W,'ANNOUNCEMENTS  -  Select a channel for each message',20,-290,495)
  local channels={{'SAY','/s'},{'RAID','/raid'},{'GUILD','/g'},{'YELL','/y'},{'EPOKER','/Epoker'}}
  local kinds={{'WINNER','Winner'},{'TABLE','Table'},{'BALANCES','Balances'}}
  for row,entry in ipairs(kinds) do
-  local y=-265-(row-1)*88
+  local y=-312-(row-1)*88
   label(W,entry[2]..' announcement',20,y,480)
   for i,ch in ipairs(channels) do
    local channel=ch[1]
    button(W,ch[2],20+(i-1)*101,y-22,96,function()announce(entry[1],channel)end,'Channel')
   end
  end
- label(W,'Announcements are sent by the Game Master in network mode.',20,-555,490)
+ label(W,'Announcements are sent by the Game Master in network mode.',20,-580,490)
  W:Hide()
 end
 function R.OpenBarrensLeaderControls()

@@ -175,15 +175,13 @@ local function build()
   local ok,err=A.Transfer(selected)
   if not ok then notify(err) end
  end)
- button(panel,'Force Seat Sync',220,-430,150,function()
-  local ok,err=A.BroadcastSeats();if not ok then notify(err) end
- end)
+ -- Manual Force Seat Sync removed; automatic synchronization remains enabled.
  button(panel,'Refresh',385,-430,100,refresh)
  label(panel,'Transfer requires an idle hand and a joined raid member. Virtual gold only.',20,-472,600)
  logLabel=label(panel,'',20,-494,610)
  panel:Hide()
 end
-function R.OpenBarrensGMTransfer() build();refresh();panel:Show();panel:Raise() end
+function R.OpenBarrensGMTransfer() if R.OpenBarrensManagement then R.OpenBarrensManagement() end end
 SLASH_BARRGMTRANSFER1='/holdemtransfer'
 SlashCmdList.BARRGMTRANSFER=function()R.OpenBarrensGMTransfer()end
 

@@ -195,25 +195,52 @@ function R.OpenBarrensSettings()
  end
  if settingsFrame:IsShown() then settingsFrame:Hide() else settingsFrame:Show();settingsFrame:Raise() end
 end
-local guideFrame,guideText
+local function label(parent,x,y,w,value,font)
+ local t=txt(parent,value,font or 'GameFontHighlightSmall')
+ t:SetPoint('TOPLEFT',parent,'TOPLEFT',x,y)
+ t:SetWidth(w);t:SetJustifyH('LEFT')
+ return t
+end
+local function addReleaseInfo(parent, topOffset)
+ local version=(GetAddOnMetadata and GetAddOnMetadata('RaidPoker_WotLK','Version')) or '2.1.0'
+ label(parent,22,topOffset,parent:GetWidth()-44,'EPOKERWOW RAID','GameFontNormal')
+ label(parent,22,topOffset-21,parent:GetWidth()-44,'|cff40d9ffVersion: '..version..'|r','GameFontNormal')
+ label(parent,22,topOffset-45,parent:GetWidth()-44,'GitHub (click the field, then Ctrl+C to copy):')
+ local link=CreateFrame('EditBox',nil,parent,'InputBoxTemplate')
+ link:SetSize(parent:GetWidth()-85,22)
+ link:SetPoint('TOPLEFT',parent,'TOPLEFT',34,topOffset-62)
+ link:SetAutoFocus(false);link:SetText('https://github.com/PizzaCompanyCom/Epoker-epoch-reborn')
+ link:SetScript('OnEscapePressed',function(self)self:ClearFocus()end)
+ link:SetScript('OnEditFocusGained',function(self)self:HighlightText()end)
+ link:SetScript('OnTextChanged',function(self)if self:GetText()~='https://github.com/PizzaCompanyCom/Epoker-epoch-reborn' then self:SetText('https://github.com/PizzaCompanyCom/Epoker-epoch-reborn');self:HighlightText()end end)
+ label(parent,22,topOffset-98,parent:GetWidth()-44,'Have a suggestion or found a bug? Contact the developer:')
+ label(parent,22,topOffset-117,parent:GetWidth()-44,'/w Belerda (Server Epoch Reborn)')
+ label(parent,22,topOffset-136,parent:GetWidth()-44,'Fluxer ID: 1547691390027169792')
+ label(parent,22,topOffset-155,parent:GetWidth()-44,'Discord ID: 1347192429404487690')
+end
+
+local guideFrame,guideText,guideRelease
 function R.OpenBarrensGuide(kind)
  if not guideFrame then
   local f=CreateFrame('Frame','RaidPokerBarrensGuide',UIParent);guideFrame=f
-  f:SetSize(645,520);f:SetPoint('CENTER');f:SetFrameStrata('FULLSCREEN_DIALOG')
+  f:SetSize(790,740);f:SetPoint('CENTER');f:SetFrameStrata('FULLSCREEN_DIALOG')
   f:SetMovable(true);f:EnableMouse(true);f:RegisterForDrag('LeftButton')
   f:SetScript('OnDragStart',function(self)self:StartMoving()end)
   f:SetScript('OnDragStop',function(self)self:StopMovingOrSizing()end)
   f:SetBackdrop({bgFile='Interface\\DialogFrame\\UI-DialogBox-Background',edgeFile='Interface\\DialogFrame\\UI-DialogBox-Border',edgeSize=24,tile=true,tileSize=32,insets={left=8,right=8,top=8,bottom=8}})
   button(f,'X',28,24,function()f:Hide()end):SetPoint('TOPRIGHT',-12,-12)
-  guideText=txt(f,'','GameFontHighlight');guideText:SetPoint('TOPLEFT',24,-28);guideText:SetWidth(585);guideText:SetJustifyH('LEFT');guideText:SetJustifyV('TOP')
+  guideText=txt(f,'','GameFontHighlight');guideText:SetPoint('TOPLEFT',24,-28);guideText:SetWidth(740);guideText:SetJustifyH('LEFT');guideText:SetJustifyV('TOP')
+  guideRelease=CreateFrame('Frame',nil,f);guideRelease:SetAllPoints(f)
+  addReleaseInfo(guideRelease,-510)
   f:Hide()
  end
  local content={
- HELP="Poker Help - Texas Hold'em\\n1. Click Join Table, If there are no active tables, click Player Management, click Create Table.\\n2. Each player receives 2 private cards.\\n3. Betting rounds: Pre-Flop, Flop, Turn and River.\\n4. On your turn, choose CHECK, CALL, BET, RAISE, FOLD or ALL-IN.\\n5. Make the best 5-card hand using your cards and the 5 community cards.\\n6. Game Master manages the table, balances and player seating.\\n\\nTurn Timer: When time expires, the game automatically CHECKS if possible, otherwise FOLDS, then advances to the next player.",
+ HELP="Poker Help - Texas Hold'em\n1. Click Join Table. If no table exists, open Player Management, click Create Table, then Poker Table. As Game Master, wait for players and click Start Game in Poker Table or the main window.\n2. If a table already exists, click Join Table, then Poker Table. You are ready and waiting for the next hand.\n3. Each player receives 2 private cards.\n4. Betting rounds: Pre-Flop, Flop, Turn and River.\n5. On your turn, choose CHECK, CALL, BET, RAISE, FOLD or ALL-IN.\n6. Make the best 5-card hand using your cards and the 5 community cards.\n7. Game Master manages the table, balances and player seating.\nTurn Timer: when time expires, the game CHECKS if possible, otherwise FOLDS, then advances to the next player.\n\nGAME MASTER - ROLE & CONTROLS\nThe player who creates the table becomes Game Master.\nStart Game: start a new hand. Player Management: manage balances and seating.\nAnte: set the mandatory contribution between hands.\nTransfer GM: select a player in Player Management and transfer authority.\nClose Table: close the table for all participants.\nOnly the Game Master can perform administrative actions.",
  RULES="TEXAS HOLD'EM RULES\\n\\nEach player gets TWO private hole cards. Community cards are revealed as Flop (3), Turn (1) and River (1). Betting occurs before the flop and after each reveal.\\n\\nMake the strongest FIVE-card combination using zero, one or both hole cards. Check only when no call is owed. Call matches the current bet; Raise increases it; Fold gives up the hand; All-In commits the remaining stack.\\n\\nAt showdown the strongest eligible hand wins. Tied eligible hands split their pot; side pots are resolved among eligible players. Virtual balances only.",
  RANKINGS="POKER HAND RANKINGS - BEST TO WORST\\n\\n1. ROYAL FLUSH: A-K-Q-J-10, all the same suit.\\n2. STRAIGHT FLUSH: five consecutive ranks of one suit.\\n3. FOUR OF A KIND: four cards of the same rank.\\n4. FULL HOUSE: three of one rank plus a pair.\\n5. FLUSH: five cards of one suit, not consecutive.\\n6. STRAIGHT: five consecutive ranks, mixed suits.\\n7. THREE OF A KIND: three cards of one rank.\\n8. TWO PAIR: two separate pairs plus a fifth card.\\n9. ONE PAIR: two equal ranks plus three kickers.\\n10. HIGH CARD: no combination; compare highest cards.\\n\\nAce can be high (10-J-Q-K-A) or low (A-2-3-4-5). Compare combination ranks first, then kickers. Exact ties split the eligible pot."
  }
  guideText:SetText((content[kind] or content.HELP):gsub('\\n','\n'))
+ if guideRelease then if kind=='HELP' then guideRelease:Show() else guideRelease:Hide() end end
  if guideFrame:IsShown() and guideFrame.currentKind==kind then guideFrame:Hide() else guideFrame.currentKind=kind;guideFrame:Show();guideFrame:Raise() end
 end
 
@@ -409,7 +436,7 @@ local function build()
  end
  local function leaveTable()
   if R.BarrensNetworkLeave then R.BarrensNetworkLeave()
-  elseif R.OpenBarrensNetworkLobby then R.OpenBarrensNetworkLobby() end
+  elseif R.OpenBarrensManagement then R.OpenBarrensManagement() end
  end
  local primary={
   {'Join Table','Interface\\Icons\\INV_Misc_GroupLooking',joinTable},
@@ -500,11 +527,11 @@ local apply=button(frame,'Apply',90,31,function()
  end
  local amounts={{'+10s',10},{'+50s',50},{'+100s',100}}
  for i,v in ipairs(amounts) do
-  button(presets,v[1],111,25,function()setRaise(v[2])end):SetPoint('TOPLEFT',presets,12+(i-1)*121,-42)
+  iconButton(presets,v[1],i<=2 and 'Interface\\Icons\\INV_Misc_Coin_03' or 'Interface\\Icons\\INV_Misc_Coin_01',111,25,function()setRaise(v[2])end):SetPoint('TOPLEFT',presets,12+(i-1)*121,-42)
  end
- button(presets,'1/4 Pot',111,25,function()local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot();setRaise(math.max(1,math.floor(((snap and snap.pot) or H.pot or 0)/4)))end):SetPoint('TOPLEFT',presets,375,-42)
- button(presets,'1/2 Pot',111,25,function()local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot();setRaise(math.max(1,math.floor(((snap and snap.pot) or H.pot or 0)/2)))end):SetPoint('TOPLEFT',presets,496,-42)
- button(presets,'Pot',111,25,function()local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot();setRaise(math.max(1,(snap and snap.pot) or H.pot or 0))end):SetPoint('TOPLEFT',presets,617,-42)
+ iconButton(presets,'1/4 Pot','Interface\\Icons\\INV_Misc_Coin_01',111,25,function()local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot();setRaise(math.max(1,math.floor(((snap and snap.pot) or H.pot or 0)/4)))end):SetPoint('TOPLEFT',presets,375,-42)
+ iconButton(presets,'1/2 Pot','Interface\\Icons\\INV_Misc_Coin_01',111,25,function()local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot();setRaise(math.max(1,math.floor(((snap and snap.pot) or H.pot or 0)/2)))end):SetPoint('TOPLEFT',presets,496,-42)
+ iconButton(presets,'Pot','Interface\\Icons\\INV_Misc_Coin_01',111,25,function()local snap=R.BarrensUnifiedSnapshot and R.BarrensUnifiedSnapshot();setRaise(math.max(1,(snap and snap.pot) or H.pot or 0))end):SetPoint('TOPLEFT',presets,617,-42)
  -- Removed obsolete LOCAL PREVIEW caption; state remains available in Solo Debug.
  historyText=txt(frame,'','GameFontHighlightSmall');historyText:SetPoint('TOPLEFT',frame,27,-723);historyText:SetWidth(725);historyText:SetHeight(17);historyText:SetJustifyH('LEFT')
  -- One aligned bottom row, following the 5-Card Draw layout.

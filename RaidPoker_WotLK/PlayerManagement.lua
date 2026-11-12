@@ -19,7 +19,7 @@ local function edit(parent,x,y,w,default)
  return e
 end
 local f=CreateFrame('Frame','RaidPokerPlayerManagement',UIParent)
-f:SetWidth(660);f:SetHeight(815);f:SetPoint('CENTER',UIParent,'CENTER',90,0)
+f:SetWidth(660);f:SetHeight(930);f:SetPoint('CENTER',UIParent,'CENTER',90,0)
 f:SetFrameStrata('FULLSCREEN_DIALOG');f:SetMovable(true);f:SetClampedToScreen(true);f:EnableMouse(true)
 R.Backdrop(f)
 local drag=CreateFrame('Frame',nil,f)
@@ -31,13 +31,13 @@ local title=label(f,22,-23,490,'PLAYER MANAGEMENT  |  GAME MASTER')
 title:SetFontObject('GameFontNormalLarge')
 btn(f,'X',617,-16,25,function()f:Hide()end)
 local gm=label(f,22,-57,590,'')
-local createTable=btn(f,'Create Table',22,-78,145,function()
+local createTable=btn(f,'Create Table',22,-76,145,function()
  if R.ActiveTableID()~='' then return end
  if #R.GetTableDirectory()>0 then R.Print('A raid table already exists. Join it instead.');return end
  R.CreateNamedTable('Ironforge Poker')
  R.RefreshPlayerManagement()
 end)
-local joinTable=btn(f,'Join Table',178,-78,145,function()
+local joinTable=btn(f,'Join Table',22,-109,145,function()
  if R.ActiveTableID()~='' then R.Print('Already connected.');return end
  local list=R.GetTableDirectory()
  if #list==1 then R.JoinNamedTable(list[1].id)
@@ -45,7 +45,7 @@ local joinTable=btn(f,'Join Table',178,-78,145,function()
  else R.Print('Multiple legacy tables detected. Use Table Browser.') end
 end)
 -- Fix 30: refresh discovery, state and peer-version information without changing balances.
-local refreshButton=btn(f,'Refresh',337,-78,114,function()
+local refreshButton=btn(f,'Refresh',342,-109,114,function()
  if R.DiscoverTables then R.DiscoverTables() end
  if R.RequestSync and R.ActiveTableID and R.ActiveTableID()~='' then R.RequestSync() end
  if R.RequestPokerPeerVersions then R.RequestPokerPeerVersions() end
@@ -62,7 +62,7 @@ if refreshText then
  refreshText:SetPoint('RIGHT',refreshButton,'RIGHT',-4,0)
  refreshText:SetJustifyH('CENTER')
 end
-local createState=label(f,460,-83,170,'No active table')
+local createState=label(f,184,-82,320,'No active table')
 local nt=createTable:GetNormalTexture();if nt then nt:SetVertexColor(.82,.22,.22) end
 -- v1.6.7: fixed-column roster with alternating rows and grid rules.
 local rows,selected={},nil
@@ -76,19 +76,19 @@ end
 local function cell(x,y,w,txt)
  return label(f,x,y,w,txt)
 end
-line(20,-114,616,24,.22)
-cell(30,-119,166,'PLAYER')
-cell(207,-119,116,'BALANCE')
-cell(330,-119,118,'STATUS')
-cell(452,-119,52,'HAND')
-cell(510,-119,60,'VERSION')
-cell(575,-119,48,'ACTION')
-for i=0,10 do line(20,-138-i*21,616,1,.34) end
-for _,x in ipairs({196,319,448,506,572}) do line(x,-114,1,234,.25) end
-local selectLabel=label(f,22,-366,600,'Selected Player: none')
+line(20,-148,616,24,.22)
+cell(30,-153,166,'PLAYER')
+cell(207,-153,116,'BALANCE')
+cell(330,-153,118,'STATUS')
+cell(452,-153,52,'HAND')
+cell(510,-153,60,'VERSION')
+cell(575,-153,48,'ACTION')
+for i=0,10 do line(20,-172-i*21,616,1,.34) end
+for _,x in ipairs({196,319,448,506,572}) do line(x,-148,1,234,.25) end
+local selectLabel=label(f,22,-400,600,'Selected Player: none')
 selectLabel:SetFontObject('GameFontNormal')
 for i=1,6 do
- local y=-140-(i-1)*21
+ local y=-174-(i-1)*21
  if i%2==0 then
   local bg=f:CreateTexture(nil,'BACKGROUND')
   bg:SetTexture('Interface\\Buttons\\WHITE8X8')
@@ -119,40 +119,47 @@ for i=1,6 do
  end)
  rows[i]=row
 end
-label(f,26,-395,110,'Gold')
-label(f,167,-395,85,'Silver')
+label(f,26,-429,110,'Gold')
+label(f,167,-429,85,'Silver')
 -- InputBoxTemplate has decorative textures extending outside its anchor;
 -- leave a wide gap and place both boxes above all action buttons.
-local gold=edit(f,35,-415,56,'0')
-local silver=edit(f,172,-415,56,'0')
-btn(f,'Set Balance',272,-415,105,function()
+local gold=edit(f,35,-449,56,'0')
+local silver=edit(f,172,-449,56,'0')
+btn(f,'Set Balance',272,-449,145,function()
  if not selected then return end
  local n=R.ReadMoney(gold,silver)
  if n then R.AdminSetBalance(selected,n) end
 end)
-btn(f,'Add',389,-415,65,function()
- if not selected then return end
- local n=R.ReadMoney(gold,silver)
- if n then
-  for _,p in ipairs(R.G.players) do if p.name==selected then R.AdminSetBalance(selected,p.balance+n);break end end
- end
+btn(f,'Sit Out',22,-480,105,function()if selected then R.AdminSetStatus(selected,'Sitting Out')end end)
+btn(f,'Sit In',136,-480,100,function()if selected then R.AdminSetStatus(selected,'Playing')end end)
+-- Default stack applies to newly seated players; existing balances are unchanged.
+label(f,478,-463,150,'Default stack (s)')
+local defaultStack=edit(f,478,-480,82,tostring(R.G.stack or 1000))
+btn(f,'Apply',568,-480,66,function()
+ if not R.IsGameMaster or not R.IsGameMaster() then R.Print('Game Master only.');return end
+ if R.G.phase~='LOBBY' and R.G.phase~='SHOWDOWN' then R.Print('Change default stack between hands.');return end
+ local n=tonumber(defaultStack:GetText())
+ if not n or n~=math.floor(n) or n<1 or n>100000000 then R.Print('Invalid default stack (1-100000000 silver).');return end
+ R.G.stack=n
+ if R.PublishManagedState then R.PublishManagedState() end
+ R.Print('Default stack set to '..n..'s. New players only.')
+ R.RefreshPlayerManagement()
 end)
-btn(f,'Remove',470,-415,85,function()
- if not selected then return end
- local n=R.ReadMoney(gold,silver)
- if n then
-  for _,p in ipairs(R.G.players) do if p.name==selected then R.AdminSetBalance(selected,math.max(0,p.balance-n));break end end
- end
+label(f,22,-506,610,'Sit Out: pause selected player for future hands; seat and balance remain.')
+label(f,22,-524,610,'Sit In: resume participation from the next hand.')
+local transferButton=btn(f,'Transfer GM',178,-109,154,function()
+ if selected then R.AdminTransferGM(selected) else R.Print('Select a player first.') end
 end)
-btn(f,'Sit Out',22,-446,105,function()if selected then R.AdminSetStatus(selected,'Sitting Out')end end)
-btn(f,'Sit In',136,-446,100,function()if selected then R.AdminSetStatus(selected,'Playing')end end)
-btn(f,'Busted',245,-446,95,function()if selected then R.AdminSetStatus(selected,'Busted')end end)
-btn(f,'Force Fold',350,-446,115,function()if selected then R.AdminForceFold(selected)end end)
-btn(f,'Kick',475,-446,80,function()if selected then R.AdminRemove(selected)end end)
-btn(f,'Transfer GM',22,-480,145,function()if selected then R.AdminTransferGM(selected)end end)
-btn(f,'Admin History',178,-480,145,function()R.ToggleAdminHistory()end)
-label(f,22,-513,180,'TURN TIMER','GameFontNormal')
-local timerButton=btn(f,'Turn Timer: 30s',178,-510,178,function()
+local function addButtonIcon(button,path)
+ local ico=button:CreateTexture(nil,'OVERLAY')
+ ico:SetTexture(path);ico:SetWidth(16);ico:SetHeight(16)
+ ico:SetPoint('LEFT',button,'LEFT',6,0)
+ local fs=button:GetFontString()
+ if fs then fs:ClearAllPoints();fs:SetPoint('LEFT',button,'LEFT',24,0);fs:SetPoint('RIGHT',button,'RIGHT',-3,0);fs:SetJustifyH('CENTER') end
+end
+addButtonIcon(transferButton,'Interface\\Icons\\INV_Misc_Head_Human_01')
+label(f,22,-547,180,'TURN TIMER','GameFontNormal')
+local timerButton=btn(f,'Turn Timer: 30s',178,-544,178,function()
  local g=R.G
  if not g then return end
  if not g.solo and g.phase~='LOBBY' and g.phase~='SHOWDOWN' and g.phase~='IDLE' then R.Print('Change the timer between hands.');return end
@@ -162,27 +169,31 @@ local timerButton=btn(f,'Turn Timer: 30s',178,-510,178,function()
  if R.PublishManagedState then R.PublishManagedState()end
  R.RefreshPlayerManagement()
 end)
-local timerHint=label(f,367,-517,250,'15s / 30s / 60s / OFF')
+local timerHint=label(f,367,-551,250,'15s / 30s / 60s / OFF')
+addButtonIcon(timerButton,'Interface\\Icons\\INV_Misc_PocketWatch_01')
 
-label(f,22,-571,605,'Balance / status / removal / GM transfer: between hands only.')
-label(f,22,-591,605,'Force Fold: during an active hand. Only the Game Master may administer.')
-label(f,22,-611,605,'Virtual currency only. No automatic gold transfer.')
-label(f,22,-643,580,'RAID PLAYERS AVAILABLE - ADDON DETECTED','GameFontNormal')
-label(f,22,-665,580,'Not seated at this table. Join through Tables to request a seat.')
-local availableRows={}
-local availablePage=0
-local availableNames={}
-for i=1,4 do
- availableRows[i]=label(f,30,-689-(i-1)*19,585,'')
+label(f,22,-605,605,'Balance / status / GM transfer: between hands only.')
+label(f,22,-625,605,'Players may leave voluntarily using Leave Table.')
+label(f,22,-645,605,'Virtual currency only. No automatic gold transfer.')
+label(f,22,-682,580,'ADMIN HISTORY (CURRENT SESSION)','GameFontNormal')
+local historyLines={}
+local historyPage=0
+for i=1,7 do historyLines[i]=label(f,30,-709-(i-1)*21,590,'') end
+local function refreshEmbeddedHistory()
+ local entries=(RaidPokerWotLKDB and RaidPokerWotLKDB.adminHistory) or {}
+ local maxPage=math.max(0,math.ceil(#entries/7)-1)
+ historyPage=math.min(historyPage,maxPage)
+ for i=1,7 do historyLines[i]:SetText(entries[historyPage*7+i] or '') end
 end
-btn(f,'< Previous',390,-759,110,function()availablePage=math.max(0,availablePage-1);R.RefreshPlayerManagement()end)
-btn(f,'Next >',510,-759,105,function()availablePage=availablePage+1;R.RefreshPlayerManagement()end)
+btn(f,'< Previous',340,-865,130,function()historyPage=math.max(0,historyPage-1);refreshEmbeddedHistory()end)
+btn(f,'Next >',480,-865,130,function()historyPage=historyPage+1;refreshEmbeddedHistory()end)
 function R.RefreshPlayerManagement()
  if not f:IsShown() then return end
  local list=R.GetTableDirectory()
  local exists=R.ActiveTableID()~='' or #list>0
  if exists then createTable:Disable() else createTable:Enable() end
  createState:SetText(R.ActiveTableID()~='' and 'Table active' or (#list>0 and 'Raid table available' or 'No active table'))
+ defaultStack:SetText(tostring(R.G.stack or 1000))
  timerButton:SetText('Turn Timer: '..((R.G.timer==0) and 'OFF' or tostring(R.G.timer or 30)..'s'))
  gm:SetText('Game Master: '..(R.GameMasterName()~='' and R.GameMasterName() or 'none')..
    (R.IsGameMaster() and '  (You have administrative control)' or '  (Read only)'))
@@ -208,23 +219,7 @@ function R.RefreshPlayerManagement()
  end
  if selected and not found then selected=nil end
  selectLabel:SetText('Selected Player: '..(selected or 'none'))
- availableNames={}
- local seated={};for _,p in ipairs(R.G.players or {}) do seated[p.name]=true end
- if GetNumRaidMembers and GetNumRaidMembers()>0 then
-  for i=1,GetNumRaidMembers() do
-   local name=GetRaidRosterInfo(i)
-   if name and not seated[name] and R.GetPokerPeerVersion and R.GetPokerPeerVersion(name) then
-    availableNames[#availableNames+1]=name
-   end
-  end
- end
- table.sort(availableNames)
- availablePage=math.min(availablePage,math.max(0,math.ceil(#availableNames/4)-1))
- for i,row in ipairs(availableRows) do
-  local name=availableNames[availablePage*4+i]
-  row:SetText(name and (name..'  |  '..(R.GetPokerPeerVersion(name) or 'Unknown')..'  |  IN RAID / NOT SEATED') or '')
- end
-
+ refreshEmbeddedHistory()
 end
 f:SetScript('OnShow',R.RefreshPlayerManagement)
 f:Hide()
@@ -232,25 +227,14 @@ R.PlayerManagementFrame=f
 function R.TogglePlayerManagement()
  if f:IsShown() then f:Hide() else f:Show();if R.RequestPokerPeerVersions then R.RequestPokerPeerVersions()end end
 end
-local h=CreateFrame('Frame','RaidPokerAdminHistory',UIParent)
-h:SetWidth(650);h:SetHeight(490);h:SetPoint('CENTER',UIParent,'CENTER',140,-15)
-h:SetFrameStrata('FULLSCREEN_DIALOG');h:SetMovable(true);h:EnableMouse(true);R.Backdrop(h)
-local bar=CreateFrame('Frame',nil,h)
-bar:SetPoint('TOPLEFT',h,'TOPLEFT',10,-8);bar:SetPoint('TOPRIGHT',h,'TOPRIGHT',-50,-8)
-bar:SetHeight(35);bar:EnableMouse(true);bar:RegisterForDrag('LeftButton')
-bar:SetScript('OnDragStart',function()h:StartMoving()end)
-bar:SetScript('OnDragStop',function()h:StopMovingOrSizing()end)
-local head=label(h,22,-24,500,'ADMINISTRATIVE ACTION HISTORY');head:SetFontObject('GameFontNormalLarge')
-btn(h,'X',605,-16,25,function()h:Hide()end)
-local history={}
-for i=1,16 do history[i]=label(h,22,-62-(i-1)*24,600,'') end
-local page=0
-local function update()
- local entries=(RaidPokerWotLKDB and RaidPokerWotLKDB.adminHistory) or {}
- for i=1,16 do history[i]:SetText(entries[page*16+i] or '') end
+-- Backward-compatible entry point; history is now embedded in Player Management.
+function R.ToggleAdminHistory()
+ if not f:IsShown() then f:Show() end
+ refreshEmbeddedHistory()
 end
-btn(h,'Previous',22,-451,105,function()page=math.max(0,page-1);update()end)
-btn(h,'Next',140,-451,105,function()page=page+1;update()end)
-h:SetScript('OnShow',function()page=0;update()end)
-h:Hide()
-function R.ToggleAdminHistory()if h:IsShown() then h:Hide() else h:Show() end end
+
+local historyElapsed=0
+f:HookScript('OnUpdate',function(self,elapsed)
+ historyElapsed=historyElapsed+elapsed
+ if historyElapsed>=1 then historyElapsed=0;refreshEmbeddedHistory() end
+end)

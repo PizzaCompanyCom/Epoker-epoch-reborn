@@ -52,17 +52,44 @@ local rules={
 }
 local help={
  'Poker Help - 5-Card Draw',
- '1. Click Join Table, If there are no active tables, click Player Management, click Create Table.',
- '2. Each player receives 5 cards. Ante is collected automatically.',
- '3. On your turn, choose CHECK, CALL, BET, RAISE, FOLD or ALL-IN.',
- '4. During Card Exchange, select up to 3 cards and click EXCHANGE CARDS, or click STAND PAT to keep your hand.',
- '5. The best 5-card poker hand wins the Bank.',
- '6. Game Master manages player balances, seating and game controls.',
+ '1. Click Join Table. If no table exists, open Player Management, click Create Table, then Poker Table. As Game Master, wait for players and click Start Game in Poker Table or the main window.',
+ '2. If a table already exists, click Join Table, then Poker Table. You are ready and waiting for the next hand.',
+ '3. Each player receives 5 cards. Ante is collected automatically.',
+ '4. On your turn, choose CHECK, CALL, BET, RAISE, FOLD or ALL-IN.',
+ '5. During Card Exchange, select up to 3 cards and click EXCHANGE CARDS, or click STAND PAT to keep your hand.',
+ '6. The best 5-card poker hand wins the Bank.',
+ '7. Game Master manages balances, seating and game controls.',
+ '',
+ 'GAME MASTER - ROLE & CONTROLS',
+ 'The player who creates the table becomes Game Master.',
+ 'Start Game: start a new hand. Player Management: manage balances and seating.',
+ 'Ante: set the mandatory contribution between hands.',
+ 'Transfer GM: select a player in Player Management and transfer authority.',
+ 'Close Table: close the table for all participants.',
+ 'Only the Game Master can perform administrative actions.',
 }
 
 local function fill(parent,lines,startY,step)
  for i,s in ipairs(lines) do label(parent,22,startY-(i-1)*step,parent:GetWidth()-42,s) end
 end
+local function addReleaseInfo(parent, topOffset)
+ local version=(GetAddOnMetadata and GetAddOnMetadata('RaidPoker_WotLK','Version')) or '2.1.0'
+ label(parent,22,topOffset,parent:GetWidth()-44,'EPOKERWOW RAID','GameFontNormal')
+ label(parent,22,topOffset-21,parent:GetWidth()-44,'|cff40d9ffVersion: '..version..'|r','GameFontNormal')
+ label(parent,22,topOffset-45,parent:GetWidth()-44,'GitHub (click the field, then Ctrl+C to copy):')
+ local link=CreateFrame('EditBox',nil,parent,'InputBoxTemplate')
+ link:SetSize(parent:GetWidth()-85,22)
+ link:SetPoint('TOPLEFT',parent,'TOPLEFT',34,topOffset-62)
+ link:SetAutoFocus(false);link:SetText('https://github.com/PizzaCompanyCom/Epoker-epoch-reborn')
+ link:SetScript('OnEscapePressed',function(self)self:ClearFocus()end)
+ link:SetScript('OnEditFocusGained',function(self)self:HighlightText()end)
+ link:SetScript('OnTextChanged',function(self)if self:GetText()~='https://github.com/PizzaCompanyCom/Epoker-epoch-reborn' then self:SetText('https://github.com/PizzaCompanyCom/Epoker-epoch-reborn');self:HighlightText()end end)
+ label(parent,22,topOffset-98,parent:GetWidth()-44,'Have a suggestion or found a bug? Contact the developer:')
+ label(parent,22,topOffset-117,parent:GetWidth()-44,'/w Belerda (Server Epoch Reborn)')
+ label(parent,22,topOffset-136,parent:GetWidth()-44,'Fluxer ID: 1547691390027169792')
+ label(parent,22,topOffset-155,parent:GetWidth()-44,'Discord ID: 1347192429404487690')
+end
+
 local priorBuild=R.BuildGame
 function R.BuildGame(main)
  priorBuild(main)
@@ -71,8 +98,8 @@ function R.BuildGame(main)
  R.RankingsFrame=X.rank;fill(X.rank,rankings,-55,24)
  X.rules=window('RaidFivePokerRules','FIVE-CARD DRAW RULES',690,485,80,0)
  R.RulesFrame=X.rules;fill(X.rules,rules,-54,25)
- X.help=window('RaidFivePokerHelp','HOW TO PLAY - GM & PLAYER',690,705,100,-10)
- R.HelpFrame=X.help;fill(X.help,help,-54,24)
+ X.help=window('RaidFivePokerHelp','HOW TO PLAY - GM & PLAYER',830,850,100,-10)
+ R.HelpFrame=X.help;fill(X.help,help,-54,35);addReleaseInfo(X.help,-650)
  R.ToggleRankings=function()if X.rank:IsShown() then X.rank:Hide()else X.rank:Show()end end
  R.ToggleRules=function()if X.rules:IsShown()then X.rules:Hide()else X.rules:Show()end end
  R.ToggleHelp=function()if X.help:IsShown()then X.help:Hide()else X.help:Show()end end

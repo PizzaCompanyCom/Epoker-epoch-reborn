@@ -74,6 +74,7 @@ function R.BuildManagement(main)
    ['Cancel Hand']='Interface\\Icons\\Ability_Rogue_FeignDeath',
    ['Resend Winner']='Interface\\Icons\\INV_Misc_Note_01',
    ['Player Management']='Interface\\Icons\\INV_Misc_GroupLooking',
+   ['Transfer Game Master']='Interface\\Icons\\INV_Misc_Head_Human_01',
   }
   local function leaderButton(title,x,y,w,fn)
    local b=button(lf,title,x,y,w,fn)
@@ -85,30 +86,52 @@ function R.BuildManagement(main)
    return b
   end
   local function desc(y,message) local t=text(lf,225,y,290,message);t:SetTextColor(0.85,0.82,0.7) end
-  leaderButton('End Hand & Determine Winner',20,-58,200,function()R.ForceManagedShowdown()end)
+  local finishBtn=leaderButton('End Hand & Determine Winner',20,-58,200,function()R.ForceManagedShowdown()end)
   desc(-62,'Finish the hand and determine the winner.')
-  leaderButton('Cancel Hand',20,-94,200,function()R.CancelManagedHand()end)
+  local cancelBtn=leaderButton('Cancel Hand',20,-94,200,function()R.CancelManagedHand()end)
   desc(-98,'Cancel the hand and refund all bets.')
-  leaderButton('Resend Winner',20,-130,200,function()R.ResendManagedWinner()end)
+  local resendBtn=leaderButton('Resend Winner',20,-130,200,function()R.ResendManagedWinner()end)
   desc(-134,'Resend the last winner result to players.')
   leaderButton('Player Management',20,-166,200,function()R.TogglePlayerManagement()end)
   desc(-170,'Manage players, balances and seating.')
+  local transferBtn=leaderButton('Transfer Game Master',20,-202,200,function()R.TogglePlayerManagement()end)
+  desc(-206,'Select a player in Player Management.')
+  local function stateTip(btn,title,why)
+   btn:SetScript('OnEnter',function(self)
+    GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText(title)
+    if why then GameTooltip:AddLine(why(),1,1,1,true) end
+    GameTooltip:Show()
+   end)
+   btn:SetScript('OnLeave',function()GameTooltip:Hide()end)
+  end
+  local function active()return G.phase=='BET1' or G.phase=='DRAW' or G.phase=='BET2' end
+  stateTip(finishBtn,'End Hand & Determine Winner',function()return active() and 'Finish the current hand.' or 'No active hand to finish.' end)
+  stateTip(cancelBtn,'Cancel Hand',function()return active() and 'Cancel the current hand and refund bets.' or 'No active hand to cancel.' end)
+  stateTip(resendBtn,'Resend Winner',function()return G.winner~='' and 'Resend the last winner result.' or 'No winner result to resend.' end)
+  stateTip(transferBtn,'Transfer Game Master',function()return active() and 'Cannot transfer Game Master during an active hand. Finish or cancel it first.' or 'Choose a player in Player Management, then click Transfer GM.' end)
+  local function refreshGMButtons()
+   local isHost=R.IsPokerHost and R.IsPokerHost()
+   local live=active()
+   if isHost and live then finishBtn:Enable();cancelBtn:Enable() else finishBtn:Disable();cancelBtn:Disable() end
+   if isHost and G.winner~='' then resendBtn:Enable() else resendBtn:Disable() end
+   if isHost and not live then transferBtn:Enable() else transferBtn:Disable() end
+  end
   local timerBtn
   local function timerLabel() return 'Turn Timer: '..((G.timer or 0)>0 and (tostring(G.timer)..'s') or 'OFF') end
-  timerBtn=leaderButton(timerLabel(),20,-202,200,function()
+  timerBtn=leaderButton(timerLabel(),20,-238,200,function()
    if not R.IsPokerHost() then return end
    local t=tonumber(G.timer) or 0
    G.timer=(t==15 and 30) or (t==30 and 60) or (t==60 and 0) or 15
    if R.BroadcastManagedState then R.BroadcastManagedState() elseif R.RequestSync then R.Refresh() end
    timerBtn:SetText(timerLabel())
   end)
-  desc(-206,'Cycle: 15s / 30s / 60s / OFF.')
-  lf:SetScript('OnShow',function()timerBtn:SetText(timerLabel())end)
-  text(lf,20,-256,485,'ANNOUNCEMENTS  -  Select a channel for each message')
+  desc(-242,'Cycle: 15s / 30s / 60s / OFF.')
+  lf:SetScript('OnShow',function()timerBtn:SetText(timerLabel());refreshGMButtons()end)
+  text(lf,20,-290,485,'ANNOUNCEMENTS  -  Select a channel for each message')
   local channels={{'SAY','/s'},{'RAID','/raid'},{'GUILD','/g'},{'YELL','/y'},{'EPOKER','/Epoker'}}
   local kinds={{'WINNER','Winner'},{'TABLE','Table'},{'BALANCES','Balances'}}
   for row,entry in ipairs(kinds) do
-   local y=-280-(row-1)*88
+   local y=-312-(row-1)*88
    text(lf,20,y,490,entry[2]..' announcement')
    for i,ch in ipairs(channels) do
     local channel=ch[1]
