@@ -1,1 +1,0 @@
-v1.7.1: Replaced Your Turn notification sound with RaidWarning.wav. Other sounds and sound settings unchanged.

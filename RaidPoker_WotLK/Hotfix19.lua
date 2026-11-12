@@ -31,25 +31,23 @@ end
 function R.HF19ActionFor(mode,name,log,round)
  if type(log)~='table' or not name then return end
  local key=mode..':'..tostring(round or 0)
- local latest,actor,action
- -- Draw writes newest first; Hold'em appends newest last.
+ -- Consume every unseen event, not only the newest event. This matters when
+ -- several Hold'em bot actions occur between two table refreshes.
+ local ordered={}
  if mode=='DRAW' then
-  for i=1,#log do
-   local n,a=R.HF19ActionFromLog(log[i])
-   if n and a then latest=i;actor=n;action=a;break end
-  end
+  for i=#log,1,-1 do ordered[#ordered+1]=i end
  else
-  for i=#log,1,-1 do
-   local n,a=R.HF19ActionFromLog(log[i])
-   if n and a then latest=i;actor=n;action=a;break end
-  end
+  for i=1,#log do ordered[#ordered+1]=i end
  end
- if latest then
-  local event=key..':'..tostring(latest)..':'..log[latest]
-  if actionSeen[mode][actor]~=event then
-   actionSeen[mode][actor]=event
-   local now=GetTime()
-   actionState[mode][actor]={action=action,started=now,untilTime=now+3,roundKey=key}
+ for _,i in ipairs(ordered) do
+  local n,action=R.HF19ActionFromLog(log[i])
+  if n and action then
+   local event=key..':'..tostring(i)..':'..log[i]
+   if actionSeen[mode][n]~=event then
+    actionSeen[mode][n]=event
+    local now=GetTime()
+    actionState[mode][n]={action=action,started=now,untilTime=now+3,roundKey=key}
+   end
   end
  end
  local v=actionState[mode][name]

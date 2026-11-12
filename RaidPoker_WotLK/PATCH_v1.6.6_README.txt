@@ -1,7 +1,0 @@
-Raid 5-Card Poker WotLK v1.6.6 — Force Sync Toolbar
-- Force Synchronization moved out of Poker Settings to the main toolbar.
-- 30x30 World of Warcraft-style icon, alongside Settings, Rankings, Rules and Help.
-- Tooltip and /poker sync command preserved.
-- Player Management continues to list only players seated at the currently selected table (not everyone with the addon in the raid).
-- All existing features of v1.6.5 preserved.
-WoW 3.3.5a / TrinityCore. In-game verification recommended.

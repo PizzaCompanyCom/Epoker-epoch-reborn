@@ -1,8 +1,0 @@
-Raid 5-Card Poker WotLK v1.7.0 — Layout adjustment
-
-- Moved Virtual silver only note to bottom of main window.
-- Moved Poker Table, Player Management, and Statistics buttons beneath Betting Presets.
-- Removed redundant Turn: line; turn owner remains visible inside the turn timer bar.
-- No poker logic or multiplayer protocol changes.
-
-Install: replace Interface/AddOns/RaidPoker_WotLK then /reload.
