@@ -92,7 +92,7 @@ local function broadcast()
  send('H|'..session..'|'..rev..'|'..safe(H.phase)..'|'..tostring(H.handNumber or 0)..'|'..tostring(H.pot or 0)..'|'..tostring(H.actionSeat or 0)..'|'..table.concat(board,',')..'|'..tostring(H.currentBet or 0)..'|'..tostring(H.minRaise or 0)..'|'..tostring(H.ante or 0))
  for i,p in ipairs(H.players or {}) do
   local flags=(p.folded and 'F' or '-')..(p.allIn and 'A' or '-')..(p.sittingOut and 'S' or '-')
-  send('P|'..session..'|'..rev..'|'..i..'|'..safe(p.name)..'|'..tostring(p.stack or 0)..'|'..tostring(p.street or 0)..'|'..flags)
+  send('P|'..session..'|'..rev..'|'..i..'|'..safe(p.name)..'|'..tostring(p.stack or 0)..'|'..tostring(p.street or 0)..'|'..flags..'|'..tostring(p.committed or 0))
  end
  send('E|'..session..'|'..rev..'|'..tostring(#(H.players or {})))
  local payouts={}
@@ -160,13 +160,14 @@ events:SetScript('OnEvent',function(self,event,...)
   S.pendingByRevision[rev]={revision=rev,phase=parts[4],handNumber=hand,pot=pot,actionSeat=turn,currentBet=currentBet,minRaise=minRaise,ante=ante,board=board,players={},winners={}}
   S.pending=S.pendingByRevision[rev]
   for old in pairs(S.pendingByRevision) do if old<rev-4 then S.pendingByRevision[old]=nil end end
- elseif kind=='P' and #parts==8 and S.pendingByRevision and S.pendingByRevision[rev] and rev>S.received then
+ elseif kind=='P' and (#parts==8 or #parts==9) and S.pendingByRevision and S.pendingByRevision[rev] and rev>S.received then
   local pending=S.pendingByRevision[rev]
   local i=boundedNumber(parts[4],6)
   local stack=boundedNumber(parts[6],100000000)
   local bet=boundedNumber(parts[7],100000000)
-  if not i or i<1 or not stack or not bet or #parts[5]>30 or not parts[8]:match('^[F%-][A%-][S%-]$') then return end
-  pending.players[i]={name=parts[5],stack=stack,street=bet,folded=parts[8]:sub(1,1)=='F',allIn=parts[8]:sub(2,2)=='A',sittingOut=parts[8]:sub(3,3)=='S'}
+  local committed=boundedNumber(parts[9] or parts[7],100000000)
+  if not i or i<1 or not stack or not bet or not committed or #parts[5]>30 or not parts[8]:match('^[F%-][A%-][S%-]$') then return end
+  pending.players[i]={name=parts[5],stack=stack,street=bet,committed=committed,folded=parts[8]:sub(1,1)=='F',allIn=parts[8]:sub(2,2)=='A',sittingOut=parts[8]:sub(3,3)=='S'}
  elseif kind=='W' and #parts==4 and S.remote and S.received==rev then
   local winners={}
   if parts[4]~='-' then
